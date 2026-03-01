@@ -1,0 +1,165 @@
+import type { BrowserWindow } from 'electron'
+import { spawn } from 'child_process'
+import { createRequire } from 'module'
+import type { WorkflowStep, RunnerResult } from '../../types/workflow.types'
+import { loadSettings } from './settings.service'
+
+// createRequire로 런타임 require 생성 → Rollup이 추적하지 못해 번들에 포함 안 됨
+const _require = createRequire(import.meta.url)
+const { chromium } = _require('playwright')
+const { expect } = _require('@playwright/test')
+
+// playwright 타입만 import (빌드 시 제거됨)
+type Page = import('playwright').Page
+type Locator = import('playwright').Locator
+
+// otplib v13: ESM-only, Rollup 번들링 우회를 위해 new Function 사용
+const _import = new Function('specifier', 'return import(specifier)') as (s: string) => Promise<any>
+let _generateSync: ((opts: { secret: string }) => string) | null = null
+async function loadOtplib() {
+  if (_generateSync) return _generateSync
+  const mod = await _import('otplib')
+  _generateSync = mod.generateSync
+  return _generateSync
+}
+
+export async function runWorkflow(
+  win: BrowserWindow | null,
+  steps: WorkflowStep[],
+  options?: { headless?: boolean }
+): Promise<RunnerResult> {
+  const headless = options?.headless ?? false
+  const browser = await chromium.launch({ headless })
+  const page = await browser.newPage()
+
+  let completedSteps = 0
+
+  try {
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i]
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('runner:step-update', i)
+      }
+
+      await executeStep(page, step)
+      completedSteps++
+    }
+
+    const result: RunnerResult = { success: true, completedSteps }
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('runner:complete', result)
+    }
+    return result
+  } catch (err) {
+    const result: RunnerResult = {
+      success: false,
+      error: String(err),
+      completedSteps
+    }
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('runner:complete', result)
+    }
+    return result
+  } finally {
+    await browser.close()
+  }
+}
+
+async function executeStep(page: Page, step: WorkflowStep): Promise<void> {
+  switch (step.action) {
+    case 'navigate':
+      if (step.url) await page.goto(step.url)
+      break
+
+    case 'click': {
+      const locator = resolveFromRaw(page, step.rawLine, /\.click\(/)
+      await locator.click()
+      break
+    }
+
+    case 'fill': {
+      const fillValue = step.value != null ? await resolveValue(step.value) : ''
+      const locator = resolveFromRaw(page, step.rawLine, /\.fill\(/)
+      await locator.fill(fillValue)
+      break
+    }
+
+    case 'select': {
+      const selectValue = step.value != null ? await resolveValue(step.value) : ''
+      const locator = resolveFromRaw(page, step.rawLine, /\.selectOption\(/)
+      await locator.selectOption(selectValue)
+      break
+    }
+
+    case 'expect':
+      if (step.url) {
+        await expect(page).toHaveURL(step.url)
+      }
+      break
+
+    case 'wait':
+      if (step.selector) await page.waitForSelector(step.selector)
+      break
+
+    case 'press': {
+      const key = step.value ?? 'Enter'
+      if (step.selector) {
+        const locator = resolveFromRaw(page, step.rawLine, /\.press\(/)
+        await locator.press(key)
+      } else {
+        await page.keyboard.press(key)
+      }
+      break
+    }
+  }
+}
+
+// rawLine에서 locator 체인 부분을 추출하여 실행
+// e.g. "page.getByRole('button', { name: '...' }).click()" → page.getByRole(...)
+// e.g. "page.locator('a').filter({ hasText: '...' }).first().click()" → page.locator('a').filter(...).first()
+function resolveFromRaw(page: Page, rawLine: string | undefined, actionPattern: RegExp): Locator {
+  if (!rawLine) throw new Error('rawLine이 없습니다. 워크플로우를 다시 녹화해주세요.')
+
+  // rawLine에서 action 부분(.click(), .fill('...') 등) 제거하여 locator 체인만 추출
+  const actionIdx = rawLine.search(actionPattern)
+  const locatorExpr = actionIdx > 0 ? rawLine.substring(0, actionIdx) : rawLine
+
+  // "page.getByRole('button', { name: '관리기능(통합)' })" → locator 체인 실행
+  const fn = new Function('page', `return ${locatorExpr}`)
+  return fn(page) as Locator
+}
+
+
+// value 패턴 처리:
+//   {{otp:프로필명}}  → settings의 OTP 프로필 secret으로 TOTP 코드 생성
+//   {{cmd: 명령어}}   → 외부 스크립트 실행 후 stdout을 값으로 사용
+async function resolveValue(value: string): Promise<string> {
+  // {{otp:name}} 패턴
+  const otpMatch = value.match(/^\{\{otp:\s*(.+?)\s*\}\}$/)
+  if (otpMatch) {
+    const profileName = otpMatch[1]
+    const settings = loadSettings()
+    const profile = settings.otpProfiles.find((p) => p.name === profileName)
+    if (!profile) throw new Error(`OTP 프로필 "${profileName}"을 찾을 수 없습니다. 설정에서 추가하세요.`)
+    const generateSync = await loadOtplib()
+    return generateSync!({ secret: profile.secret })
+  }
+
+  // {{cmd: command}} 패턴
+  const cmdMatch = value.match(/^\{\{cmd:\s*(.+?)\s*\}\}$/)
+  if (!cmdMatch) return value
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn(cmdMatch[1], { shell: true })
+    let stdout = ''
+    let stderr = ''
+    proc.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
+    proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString() })
+    proc.on('close', (code) => {
+      if (code !== 0) reject(new Error(`Command failed (exit ${code}): ${stderr.trim()}`))
+      else resolve(stdout.trim())
+    })
+    proc.on('error', reject)
+  })
+}
+
