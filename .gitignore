@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+out/
+dist/
+
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+
+# bkit / PDCA internal files
+.bkit/
+.bkit-memory.json
+docs/.bkit-memory.json
+docs/.pdca-snapshots/
+docs/.pdca-status.json
+
+# Claude Code internal
+.claude/
