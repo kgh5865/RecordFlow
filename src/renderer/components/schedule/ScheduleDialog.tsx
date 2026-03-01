@@ -1,0 +1,208 @@
+import { useState } from 'react'
+import { useScheduleStore } from '../../stores/scheduleStore'
+import { useWorkflowStore } from '../../stores/workflowStore'
+import type { ScheduleType } from '../../../types/workflow.types'
+
+interface Props {
+  onClose: () => void
+}
+
+const CRON_PRESETS = [
+  { label: '매 5분', value: '*/5 * * * *' },
+  { label: '매 10분', value: '*/10 * * * *' },
+  { label: '매 30분', value: '*/30 * * * *' },
+  { label: '매시간', value: '0 * * * *' },
+  { label: '매일 09:00', value: '0 9 * * *' },
+  { label: '매일 자정', value: '0 0 * * *' },
+  { label: '직접 입력', value: '__custom__' }
+]
+
+function calcNextRunLabel(cron: string): string {
+  if (!cron || cron === '__custom__') return ''
+  try {
+    // Simple client-side next run estimation (rough)
+    const preset = CRON_PRESETS.find((p) => p.value === cron)
+    if (preset && preset.value !== '__custom__') return `프리셋: ${preset.label}`
+    return `cron: ${cron}`
+  } catch {
+    return ''
+  }
+}
+
+
+export function ScheduleDialog({ onClose }: Props) {
+  const workflows = useWorkflowStore((s) => s.workflows)
+  const { createSchedule } = useScheduleStore()
+
+  const [workflowId, setWorkflowId] = useState(workflows[0]?.id ?? '')
+  const [type, setType] = useState<ScheduleType>('cron')
+  const [preset, setPreset] = useState(CRON_PRESETS[0].value)
+  const [customCron, setCustomCron] = useState('')
+  const [scheduledAt, setScheduledAt] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const cronExpression = preset === '__custom__' ? customCron : preset
+
+  const handleSave = async () => {
+    setError('')
+    if (!workflowId) { setError('워크플로우를 선택하세요.'); return }
+
+    if (type === 'cron') {
+      if (!cronExpression) { setError('cron 표현식을 입력하세요.'); return }
+    } else {
+      if (!scheduledAt) { setError('날짜/시간을 선택하세요.'); return }
+      const dt = new Date(scheduledAt)
+      if (dt.getTime() <= Date.now()) { setError('현재 시각 이후를 선택하세요.'); return }
+    }
+
+    setSaving(true)
+    try {
+      await createSchedule({
+        workflowId,
+        type,
+        cronExpression: type === 'cron' ? cronExpression : undefined,
+        scheduledAt: type === 'once' ? new Date(scheduledAt).toISOString() : undefined,
+        enabled: true
+      })
+      onClose()
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // datetime-local min value (now)
+  const nowLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16)
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div className="bg-[#252526] border border-[#3c3c3c] rounded-lg w-[400px] shadow-2xl">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#3c3c3c]">
+          <span className="text-sm font-semibold text-[#cccccc]">스케줄 추가</span>
+          <button
+            onClick={onClose}
+            className="text-[#666] hover:text-[#ccc] transition-colors text-lg leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* 폼 */}
+        <div className="px-4 py-4 space-y-4">
+          {/* 워크플로우 선택 */}
+          <div>
+            <label className="block text-[11px] text-[#888] mb-1">워크플로우</label>
+            <select
+              value={workflowId}
+              onChange={(e) => setWorkflowId(e.target.value)}
+              className="w-full bg-[#3c3c3c] text-[#cccccc] text-xs rounded px-2 py-1.5 border border-[#555] focus:outline-none focus:border-[#007acc]"
+            >
+              {workflows.length === 0 && (
+                <option value="">워크플로우가 없습니다</option>
+              )}
+              {workflows.map((w) => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 실행 유형 */}
+          <div>
+            <label className="block text-[11px] text-[#888] mb-1">실행 유형</label>
+            <div className="flex gap-4">
+              {(['cron', 'once'] as ScheduleType[]).map((t) => (
+                <label key={t} className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    value={t}
+                    checked={type === t}
+                    onChange={() => setType(t)}
+                    className="accent-[#007acc]"
+                  />
+                  <span className="text-xs text-[#cccccc]">
+                    {t === 'cron' ? '반복' : '1회 예약'}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* 반복 설정 */}
+          {type === 'cron' && (
+            <div className="space-y-2">
+              <label className="block text-[11px] text-[#888]">주기 프리셋</label>
+              <select
+                value={preset}
+                onChange={(e) => setPreset(e.target.value)}
+                className="w-full bg-[#3c3c3c] text-[#cccccc] text-xs rounded px-2 py-1.5 border border-[#555] focus:outline-none focus:border-[#007acc]"
+              >
+                {CRON_PRESETS.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+
+              {preset === '__custom__' && (
+                <div>
+                  <input
+                    type="text"
+                    value={customCron}
+                    onChange={(e) => setCustomCron(e.target.value)}
+                    placeholder="예: 0 9 * * 1-5 (평일 09:00)"
+                    className="w-full bg-[#3c3c3c] text-[#cccccc] text-xs rounded px-2 py-1.5 border border-[#555] focus:outline-none focus:border-[#007acc] placeholder:text-[#555]"
+                  />
+                </div>
+              )}
+
+              {cronExpression && cronExpression !== '__custom__' && (
+                <div className="text-[10px] text-[#4caf50]">
+                  {calcNextRunLabel(cronExpression)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 1회 예약 설정 */}
+          {type === 'once' && (
+            <div>
+              <label className="block text-[11px] text-[#888] mb-1">날짜 / 시간</label>
+              <input
+                type="datetime-local"
+                value={scheduledAt}
+                min={nowLocal}
+                onChange={(e) => setScheduledAt(e.target.value)}
+                className="w-full bg-[#3c3c3c] text-[#cccccc] text-xs rounded px-2 py-1.5 border border-[#555] focus:outline-none focus:border-[#007acc]"
+              />
+            </div>
+          )}
+
+          {/* 에러 */}
+          {error && (
+            <div className="text-[11px] text-red-400">{error}</div>
+          )}
+        </div>
+
+        {/* 푸터 */}
+        <div className="flex justify-end gap-2 px-4 py-3 border-t border-[#3c3c3c]">
+          <button
+            onClick={onClose}
+            className="px-3 py-1 text-xs rounded text-[#cccccc] bg-[#3c3c3c] hover:bg-[#505050] transition-colors"
+          >
+            취소
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || workflows.length === 0}
+            className="px-3 py-1 text-xs rounded bg-[#0e639c] hover:bg-[#1177bb] text-white disabled:opacity-50 transition-colors"
+          >
+            {saving ? '저장 중...' : '저장'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
