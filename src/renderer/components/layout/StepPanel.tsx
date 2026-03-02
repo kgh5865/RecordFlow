@@ -76,26 +76,21 @@ export function StepPanel() {
               >
                 💾 Save
               </button>
-              {pendingDiscard ? (
-                <span className="flex items-center gap-1 shrink-0">
-                  <span className="text-[10px] text-[#cccccc]">되돌리시겠습니까?</span>
-                  <button
-                    onClick={() => { discardWorkflow(workflow.id); setPendingDiscard(false) }}
-                    className="px-2 py-0.5 text-xs rounded bg-[#555] hover:bg-[#666] text-white transition-colors"
-                  >확인</button>
-                  <button
-                    onClick={() => setPendingDiscard(false)}
-                    className="px-2 py-0.5 text-xs rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
-                  >취소</button>
-                </span>
-              ) : (
-                <button
-                  onClick={() => setPendingDiscard(true)}
-                  className="px-3 py-0.5 text-xs rounded bg-[#555] hover:bg-[#666] text-white transition-colors"
-                  title="편집 전 상태로 되돌리기"
-                >
-                  ↩ Discard
-                </button>
+              <button
+                onClick={() => setPendingDiscard(true)}
+                className="px-3 py-0.5 text-xs rounded bg-[#555] hover:bg-[#666] text-white transition-colors"
+                title="편집 전 상태로 되돌리기"
+              >
+                ↩ Discard
+              </button>
+              {pendingDiscard && (
+                <ConfirmDialog
+                  title="변경사항 되돌리기"
+                  message={`"${workflow.name}"의 저장되지 않은 변경사항을 모두 버리고\n편집 전 상태로 되돌립니다.\n이 작업은 취소할 수 없습니다.`}
+                  confirmLabel="되돌리기"
+                  onConfirm={() => { discardWorkflow(workflow.id); setPendingDiscard(false) }}
+                  onClose={() => setPendingDiscard(false)}
+                />
               )}
             </>
           )}
