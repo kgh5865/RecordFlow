@@ -107,12 +107,12 @@ export function RunResultToast() {
           {!success && error && (
             <div>
               <div className="text-[11px] text-[#666] mb-2">오류 메시지</div>
-              <div className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg overflow-hidden">
+              <div className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg overflow-hidden select-text cursor-text">
                 {/* 핵심 메시지 */}
                 <div className="px-3 py-2 text-[11px] text-red-400 border-b border-[#3c3c3c]">
                   {errorSummary}
                 </div>
-                {/* 스택 트레이스 (접을 수 있는 영역) */}
+                {/* 스택 트레이스 */}
                 {errorDetail && (
                   <div className="px-3 py-2 max-h-[120px] overflow-y-auto">
                     <pre className="text-[10px] text-[#555] whitespace-pre-wrap break-all font-mono leading-relaxed">
