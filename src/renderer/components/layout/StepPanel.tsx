@@ -3,6 +3,7 @@ import { useWorkflowStore } from '../../stores/workflowStore'
 import { useUiStore } from '../../stores/uiStore'
 import { ipc } from '../../services/ipc.service'
 import { StepList } from '../steps/StepList'
+import { ConfirmDialog } from '../dialogs/ConfirmDialog'
 
 export function StepPanel() {
   const { selectedWorkflowId, runningWorkflowId, setRunning } = useUiStore()
@@ -115,32 +116,28 @@ export function StepPanel() {
               ▶ Run
             </button>
           )}
-          {pendingDelete ? (
-            <span className="flex items-center gap-1 shrink-0">
-              <span className="text-[10px] text-[#cccccc]">삭제?</span>
-              <button
-                onClick={() => { deleteWorkflow(workflow.id); selectWorkflow(null); setPendingDelete(false) }}
-                className="px-2 py-0.5 text-xs rounded bg-red-600 hover:bg-red-500 text-white transition-colors"
-              >확인</button>
-              <button
-                onClick={() => setPendingDelete(false)}
-                className="px-2 py-0.5 text-xs rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
-              >취소</button>
-            </span>
-          ) : (
-            <button
-              onClick={() => setPendingDelete(true)}
-              disabled={isRunning}
-              className="px-3 py-0.5 text-xs rounded bg-red-600 hover:bg-red-500 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              title="workflow 삭제"
-            >
-              🗑 Delete
-            </button>
-          )}
+          <button
+            onClick={() => setPendingDelete(true)}
+            disabled={isRunning}
+            className="px-3 py-0.5 text-xs rounded bg-red-600 hover:bg-red-500 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="workflow 삭제"
+          >
+            🗑 Delete
+          </button>
         </div>
       </div>
 
       <StepList workflow={workflow} />
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="워크플로우 삭제"
+          message={`"${workflow.name}"을(를) 삭제합니다.\n이 작업은 되돌릴 수 없습니다.`}
+          confirmLabel="삭제"
+          onConfirm={() => { deleteWorkflow(workflow.id); selectWorkflow(null); setPendingDelete(false) }}
+          onClose={() => setPendingDelete(false)}
+        />
+      )}
     </div>
   )
 }

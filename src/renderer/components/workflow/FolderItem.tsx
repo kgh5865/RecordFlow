@@ -2,6 +2,7 @@ import { memo, useState } from 'react'
 import { useUiStore } from '../../stores/uiStore'
 import { useWorkflowStore } from '../../stores/workflowStore'
 import { ContextMenu } from './ContextMenu'
+import { ConfirmDialog } from '../dialogs/ConfirmDialog'
 import type { WorkflowFolder, Workflow } from '../../../types/workflow.types'
 import { WorkflowItem } from './WorkflowItem'
 
@@ -71,17 +72,13 @@ export const FolderItem = memo(function FolderItem({ folder, workflows, allFolde
       </div>
 
       {pendingDelete && (
-        <div className="flex items-center gap-1 px-2 py-1" onClick={(e) => e.stopPropagation()}>
-          <span className="text-[10px] text-[#cccccc]">"{folder.name}" 삭제하시겠습니까?</span>
-          <button
-            onClick={() => { deleteFolder(folder.id); setPendingDelete(false) }}
-            className="px-2 py-0.5 text-[10px] rounded bg-red-600 hover:bg-red-500 text-white transition-colors"
-          >확인</button>
-          <button
-            onClick={() => setPendingDelete(false)}
-            className="px-2 py-0.5 text-[10px] rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
-          >취소</button>
-        </div>
+        <ConfirmDialog
+          title="폴더 삭제"
+          message={`"${folder.name}" 폴더와 안에 포함된 모든 워크플로우가 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.`}
+          confirmLabel="삭제"
+          onConfirm={() => { deleteFolder(folder.id); setPendingDelete(false) }}
+          onClose={() => setPendingDelete(false)}
+        />
       )}
 
       {isExpanded && (

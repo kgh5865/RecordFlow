@@ -2,6 +2,7 @@ import { memo, useState } from 'react'
 import { useUiStore } from '../../stores/uiStore'
 import { useWorkflowStore } from '../../stores/workflowStore'
 import { ContextMenu } from './ContextMenu'
+import { ConfirmDialog } from '../dialogs/ConfirmDialog'
 import type { Workflow } from '../../../types/workflow.types'
 
 interface WorkflowItemProps {
@@ -74,40 +75,34 @@ export const WorkflowItem = memo(function WorkflowItem({ workflow }: WorkflowIte
       </div>
 
       {pendingDelete && (
-        <div className="flex items-center gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
-          <span className="text-[10px] text-[#cccccc]">삭제하시겠습니까?</span>
-          <button
-            onClick={() => {
-              if (isSelected) selectWorkflow(null)
-              deleteWorkflow(workflow.id)
-              setPendingDelete(false)
-            }}
-            className="px-2 py-0.5 text-[10px] rounded bg-red-600 hover:bg-red-500 text-white transition-colors"
-          >확인</button>
-          <button
-            onClick={() => setPendingDelete(false)}
-            className="px-2 py-0.5 text-[10px] rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
-          >취소</button>
-        </div>
+        <ConfirmDialog
+          title="워크플로우 삭제"
+          message={`"${workflow.name}"을(를) 삭제합니다.\n이 작업은 되돌릴 수 없습니다.`}
+          confirmLabel="삭제"
+          variant="danger"
+          onConfirm={() => {
+            if (isSelected) selectWorkflow(null)
+            deleteWorkflow(workflow.id)
+            setPendingDelete(false)
+          }}
+          onClose={() => setPendingDelete(false)}
+        />
       )}
 
       {pendingNavigate && (
-        <div className="flex items-center gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
-          <span className="text-[10px] text-[#cccccc]">변경사항 버리고 이동?</span>
-          <button
-            onClick={() => {
-              discardWorkflow(selectedWorkflowId!)
-              selectWorkflow(workflow.id)
-              selectFolder(null)
-              setPendingNavigate(false)
-            }}
-            className="px-2 py-0.5 text-[10px] rounded bg-[#007acc] hover:bg-[#1a8ad4] text-white transition-colors"
-          >이동</button>
-          <button
-            onClick={() => setPendingNavigate(false)}
-            className="px-2 py-0.5 text-[10px] rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
-          >취소</button>
-        </div>
+        <ConfirmDialog
+          title="미저장 변경사항"
+          message={`현재 워크플로우에 저장되지 않은 변경사항이 있습니다.\n변경사항을 버리고 이동하시겠습니까?`}
+          confirmLabel="버리고 이동"
+          variant="primary"
+          onConfirm={() => {
+            discardWorkflow(selectedWorkflowId!)
+            selectWorkflow(workflow.id)
+            selectFolder(null)
+            setPendingNavigate(false)
+          }}
+          onClose={() => setPendingNavigate(false)}
+        />
       )}
 
       {menu && (
