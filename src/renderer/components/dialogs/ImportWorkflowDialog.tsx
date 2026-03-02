@@ -50,7 +50,6 @@ export function ImportWorkflowDialog() {
             folders={folders}
             selectedId={targetFolderId}
             onChange={(id) => { setTargetFolderId(id); setFolderError(false) }}
-            radioName="import-folder"
           />
         </div>
 

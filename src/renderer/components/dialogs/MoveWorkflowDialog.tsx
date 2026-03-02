@@ -30,7 +30,6 @@ export function MoveWorkflowDialog() {
         folders={folders}
         selectedId={targetFolderId}
         onChange={setTargetFolderId}
-        radioName="move-folder"
       />
     </Dialog>
   )
