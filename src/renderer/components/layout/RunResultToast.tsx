@@ -197,7 +197,7 @@ export function RunResultToast() {
             {hint && (
               <div>
                 <div className="text-[11px] text-[#666] mb-2">해결 방안</div>
-                <div className="bg-[#1e2a1e] border border-[#4caf50]/20 rounded-lg px-3 py-3">
+                <div className="bg-[#1e2a1e] border border-[#4caf50]/20 rounded-lg px-3 py-3 select-text cursor-text">
                   <div className="text-[11px] font-semibold text-[#4caf50] mb-2">{hint.title}</div>
                   <ol className="space-y-1.5">
                     {hint.steps.map((step, i) => (
