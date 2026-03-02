@@ -175,9 +175,9 @@ export function registerIpcHandlers(
     }
   })
 
-  ipcMain.handle('schedule:logs', (_event, scheduleId: string, limit?: number) => {
+  ipcMain.handle('schedule:logs', async (_event, scheduleId: string, limit?: number) => {
     try {
-      return getScheduleLogs(scheduleId, limit)
+      return await getScheduleLogs(scheduleId, limit)
     } catch (err) {
       console.error('[IPC] schedule:logs error:', err)
       throw err

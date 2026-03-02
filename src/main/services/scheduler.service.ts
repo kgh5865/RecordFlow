@@ -2,7 +2,8 @@ import type { BrowserWindow } from 'electron'
 import * as cron from 'node-cron'
 import { parseExpression } from 'cron-parser'
 import { randomUUID } from 'crypto'
-import { readFileSync, existsSync } from 'fs'
+import { existsSync } from 'fs'
+import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { app } from 'electron'
 import type { Schedule, ScheduleLog } from '../../types/workflow.types'
@@ -153,23 +154,23 @@ async function executeSchedule(scheduleId: string): Promise<void> {
 
 // --- Log persistence ---
 
-function loadLogs(): ScheduleLog[] {
+async function loadLogs(): Promise<ScheduleLog[]> {
   try {
     if (!existsSync(LOG_FILE)) return []
-    return JSON.parse(readFileSync(LOG_FILE, 'utf-8')) as ScheduleLog[]
+    return JSON.parse(await readFile(LOG_FILE, 'utf-8')) as ScheduleLog[]
   } catch {
     return []
   }
 }
 
 async function saveScheduleLog(log: ScheduleLog): Promise<void> {
-  const logs = loadLogs()
+  const logs = await loadLogs()
   logs.unshift(log)
   // Keep latest 500 entries
   await saveJSONAsync(LOG_FILE, logs.slice(0, 500))
 }
 
-export function getScheduleLogs(scheduleId: string, limit = 20): ScheduleLog[] {
-  const logs = loadLogs()
+export async function getScheduleLogs(scheduleId: string, limit = 20): Promise<ScheduleLog[]> {
+  const logs = await loadLogs()
   return logs.filter((l) => l.scheduleId === scheduleId).slice(0, limit)
 }
