@@ -3,6 +3,7 @@ import { WorkflowPanel } from './WorkflowPanel'
 import { StepPanel } from './StepPanel'
 import { ScheduleDetail } from '../schedule/ScheduleDetail'
 import { SettingsPanel } from '../settings/SettingsPanel'
+import { RunResultToast } from './RunResultToast'
 import { useUiStore } from '../../stores/uiStore'
 
 export function AppLayout() {
@@ -20,6 +21,7 @@ export function AppLayout() {
             : <StepPanel />
         }
       </div>
+      <RunResultToast />
     </div>
   )
 }
