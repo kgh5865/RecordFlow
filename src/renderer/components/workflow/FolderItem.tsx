@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { useUiStore } from '../../stores/uiStore'
 import { useWorkflowStore } from '../../stores/workflowStore'
 import { ContextMenu } from './ContextMenu'
 import type { WorkflowFolder, Workflow } from '../../../types/workflow.types'
 import { WorkflowItem } from './WorkflowItem'
 
-interface Props {
+interface FolderItemProps {
   folder: WorkflowFolder
   workflows: Workflow[]
   allFolders: WorkflowFolder[]
@@ -13,13 +13,14 @@ interface Props {
   depth: number
 }
 
-export function FolderItem({ folder, workflows, allFolders, allWorkflows, depth }: Props) {
+export const FolderItem = memo(function FolderItem({ folder, workflows, allFolders, allWorkflows, depth }: FolderItemProps) {
   const { expandedFolderIds, selectedFolderId, toggleFolder, selectFolder, selectWorkflow, openDialog } = useUiStore()
   const deleteFolder = useWorkflowStore((s) => s.deleteFolder)
   const isExpanded = expandedFolderIds.includes(folder.id)
   const isSelected = selectedFolderId === folder.id
 
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [pendingDelete, setPendingDelete] = useState(false)
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -32,21 +33,20 @@ export function FolderItem({ folder, workflows, allFolders, allWorkflows, depth 
       label: '+ New Workflow',
       onClick: () => {
         selectFolder(folder.id)
-        openDialog('new-workflow', { targetFolderId: folder.id })
+        openDialog({ type: 'new-workflow', targetFolderId: folder.id })
       }
     },
     {
       label: 'Rename',
       onClick: () =>
-        openDialog('rename-folder', { targetFolderId: folder.id, currentName: folder.name })
+        openDialog({ type: 'rename-folder', targetFolderId: folder.id, currentName: folder.name })
     },
     {
       label: 'Delete Folder',
       danger: true,
       onClick: () => {
-        if (confirm(`"${folder.name}" 폴더를 삭제하시겠습니까? 내부 workflow도 삭제됩니다.`)) {
-          deleteFolder(folder.id)
-        }
+        setMenu(null)
+        setPendingDelete(true)
       }
     }
   ]
@@ -69,6 +69,20 @@ export function FolderItem({ folder, workflows, allFolders, allWorkflows, depth 
           {workflows.length}
         </span>
       </div>
+
+      {pendingDelete && (
+        <div className="flex items-center gap-1 px-2 py-1" onClick={(e) => e.stopPropagation()}>
+          <span className="text-[10px] text-[#cccccc]">"{folder.name}" 삭제하시겠습니까?</span>
+          <button
+            onClick={() => { deleteFolder(folder.id); setPendingDelete(false) }}
+            className="px-2 py-0.5 text-[10px] rounded bg-red-600 hover:bg-red-500 text-white transition-colors"
+          >확인</button>
+          <button
+            onClick={() => setPendingDelete(false)}
+            className="px-2 py-0.5 text-[10px] rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
+          >취소</button>
+        </div>
+      )}
 
       {isExpanded && (
         <div style={{ paddingLeft: `${(depth + 1) * 12}px` }}>
@@ -103,4 +117,4 @@ export function FolderItem({ folder, workflows, allFolders, allWorkflows, depth 
       )}
     </div>
   )
-}
+})

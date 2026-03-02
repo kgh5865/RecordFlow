@@ -9,10 +9,11 @@ export function MoveWorkflowDialog() {
   const workflows = useWorkflowStore((s) => s.workflows)
   const moveWorkflow = useWorkflowStore((s) => s.moveWorkflow)
 
-  const workflow = workflows.find((w) => w.id === dialog.targetWorkflowId)
+  const targetWorkflowId = dialog.type === 'move-workflow' ? dialog.targetWorkflowId : null
+  const workflow = workflows.find((w) => w.id === targetWorkflowId)
   const [targetFolderId, setTargetFolderId] = useState(workflow?.folderId ?? '')
 
-  if (!workflow) { closeDialog(); return null }
+  if (!targetWorkflowId || !workflow) { closeDialog(); return null }
 
   const handleConfirm = () => {
     if (targetFolderId && targetFolderId !== workflow.folderId) {

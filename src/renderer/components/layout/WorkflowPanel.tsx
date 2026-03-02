@@ -35,14 +35,14 @@ export function WorkflowPanel() {
           </div>
           <div className="flex gap-1 p-2 border-t border-[#3c3c3c] shrink-0">
             <button
-              onClick={() => openDialog('new-folder')}
+              onClick={() => openDialog({ type: 'new-folder' })}
               className="flex-1 py-1 text-xs rounded text-[#cccccc] bg-[#3c3c3c] hover:bg-[#505050] transition-colors"
             >
               + Folder
             </button>
             <button
               onClick={() =>
-                openDialog('new-workflow', { targetFolderId: selectedFolderId ?? undefined })
+                openDialog({ type: 'new-workflow', targetFolderId: selectedFolderId ?? undefined })
               }
               disabled={!selectedFolderId}
               className="flex-1 py-1 text-xs rounded text-[#cccccc] bg-[#3c3c3c] hover:bg-[#505050] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"

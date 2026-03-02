@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useWorkflowStore } from '../../stores/workflowStore'
 import { useUiStore } from '../../stores/uiStore'
 import { FolderItem } from './FolderItem'
@@ -29,7 +30,7 @@ export function FolderTree() {
     )
   }
 
-  const rootFolders = folders.filter((f) => !f.parentId)
+  const rootFolders = useMemo(() => folders.filter((f) => !f.parentId), [folders])
 
   return (
     <div className="flex flex-col min-h-full">

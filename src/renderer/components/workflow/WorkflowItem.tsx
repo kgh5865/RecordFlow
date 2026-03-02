@@ -1,14 +1,14 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { useUiStore } from '../../stores/uiStore'
 import { useWorkflowStore } from '../../stores/workflowStore'
 import { ContextMenu } from './ContextMenu'
 import type { Workflow } from '../../../types/workflow.types'
 
-interface Props {
+interface WorkflowItemProps {
   workflow: Workflow
 }
 
-export function WorkflowItem({ workflow }: Props) {
+export const WorkflowItem = memo(function WorkflowItem({ workflow }: WorkflowItemProps) {
   const { selectedWorkflowId, selectWorkflow, selectFolder, openDialog } = useUiStore()
   const deleteWorkflow = useWorkflowStore((s) => s.deleteWorkflow)
   const dirtyWorkflowIds = useWorkflowStore((s) => s.dirtyWorkflowIds)
@@ -30,15 +30,12 @@ export function WorkflowItem({ workflow }: Props) {
     {
       label: 'Rename',
       onClick: () =>
-        openDialog('rename-workflow', {
-          targetWorkflowId: workflow.id,
-          currentName: workflow.name
-        })
+        openDialog({ type: 'rename-workflow', targetWorkflowId: workflow.id, currentName: workflow.name })
     },
     {
       label: 'Move to Folder',
       onClick: () =>
-        openDialog('move-workflow', { targetWorkflowId: workflow.id })
+        openDialog({ type: 'move-workflow', targetWorkflowId: workflow.id })
     },
     {
       label: 'Delete',
@@ -123,4 +120,4 @@ export function WorkflowItem({ workflow }: Props) {
       )}
     </div>
   )
-}
+})

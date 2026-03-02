@@ -45,6 +45,7 @@ export function registerIpcHandlers(
 
   ipcMain.handle('codegen:start', (_event, url: string) => {
     try {
+      if (typeof url !== 'string' || !url) throw new Error('Invalid url parameter')
       const win = getMainWindow()
       if (!win) return
       startCodegen(win, url)
@@ -67,6 +68,7 @@ export function registerIpcHandlers(
 
   ipcMain.handle('runner:start', async (_event, steps: WorkflowStep[]) => {
     try {
+      if (!Array.isArray(steps)) throw new Error('Invalid steps parameter')
       const win = getMainWindow()
       if (!win) return
       await runWorkflow(win, steps)
@@ -115,6 +117,7 @@ export function registerIpcHandlers(
 
   ipcMain.handle('schedule:update', async (_event, id: string, patch: Partial<Schedule>) => {
     try {
+      if (typeof id !== 'string' || !id) throw new Error('Invalid id parameter')
       const storage = loadStorage()
       const idx = storage.schedules.findIndex((s) => s.id === id)
       if (idx === -1) throw new Error('Schedule not found')
@@ -142,6 +145,7 @@ export function registerIpcHandlers(
 
   ipcMain.handle('schedule:delete', async (_event, id: string) => {
     try {
+      if (typeof id !== 'string' || !id) throw new Error('Invalid id parameter')
       const storage = loadStorage()
       unregisterSchedule(id)
       storage.schedules = storage.schedules.filter((s) => s.id !== id)
@@ -154,6 +158,8 @@ export function registerIpcHandlers(
 
   ipcMain.handle('schedule:toggle', async (_event, id: string, enabled: boolean) => {
     try {
+      if (typeof id !== 'string' || !id) throw new Error('Invalid id parameter')
+      if (typeof enabled !== 'boolean') throw new Error('Invalid enabled parameter')
       const storage = loadStorage()
       const idx = storage.schedules.findIndex((s) => s.id === id)
       if (idx === -1) throw new Error('Schedule not found')

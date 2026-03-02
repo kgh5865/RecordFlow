@@ -45,17 +45,25 @@ export function OtpSection() {
       return
     }
     const newProfile: OtpProfile = { id: crypto.randomUUID(), name, secret }
-    await saveSettings({ ...settings, otpProfiles: [...settings.otpProfiles, newProfile] })
-    setOtpName('')
-    setOtpSecret('')
-    setAddingOtp(false)
+    try {
+      await saveSettings({ ...settings, otpProfiles: [...settings.otpProfiles, newProfile] })
+      setOtpName('')
+      setOtpSecret('')
+      setAddingOtp(false)
+    } catch (err) {
+      setQrError(`저장 오류: ${String(err)}`)
+    }
   }
 
   const handleDeleteOtp = async (id: string) => {
-    await saveSettings({
-      ...settings,
-      otpProfiles: settings.otpProfiles.filter((p) => p.id !== id)
-    })
+    try {
+      await saveSettings({
+        ...settings,
+        otpProfiles: settings.otpProfiles.filter((p) => p.id !== id)
+      })
+    } catch (err) {
+      console.error('[OTP] delete error:', err)
+    }
   }
 
   const handleAddMigrationOtps = async () => {
@@ -73,10 +81,14 @@ export function OtpSection() {
       return
     }
     const newProfiles: OtpProfile[] = toAdd.map((e) => ({ id: crypto.randomUUID(), name: e.name, secret: e.secret }))
-    await saveSettings({ ...settings, otpProfiles: [...settings.otpProfiles, ...newProfiles] })
-    setMigrationEntries(null)
-    setSelectedMigrationIndices(new Set())
-    setQrError('')
+    try {
+      await saveSettings({ ...settings, otpProfiles: [...settings.otpProfiles, ...newProfiles] })
+      setMigrationEntries(null)
+      setSelectedMigrationIndices(new Set())
+      setQrError('')
+    } catch (err) {
+      setQrError(`저장 오류: ${String(err)}`)
+    }
   }
 
   const toggleMigrationIndex = (i: number) => {

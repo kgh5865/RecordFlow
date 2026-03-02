@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { useScheduleStore } from '../../stores/scheduleStore'
 import { useWorkflowStore } from '../../stores/workflowStore'
 import type { Schedule } from '../../../types/workflow.types'
 
-interface Props {
+interface ScheduleItemProps {
   schedule: Schedule
   isSelected: boolean
   onSelect: () => void
@@ -51,10 +51,11 @@ function formatNextRun(s: Schedule): string {
   return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-export function ScheduleItem({ schedule, isSelected, onSelect }: Props) {
+export const ScheduleItem = memo(function ScheduleItem({ schedule, isSelected, onSelect }: ScheduleItemProps) {
   const { toggleSchedule, deleteSchedule } = useScheduleStore()
   const workflows = useWorkflowStore((s) => s.workflows)
   const [hovered, setHovered] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState(false)
 
   const workflow = workflows.find((w) => w.id === schedule.workflowId)
 
@@ -63,18 +64,11 @@ export function ScheduleItem({ schedule, isSelected, onSelect }: Props) {
     toggleSchedule(schedule.id, !schedule.enabled)
   }
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (confirm(`"${formatCron(schedule)}" 스케줄을 삭제하시겠습니까?`)) {
-      deleteSchedule(schedule.id)
-    }
-  }
-
   return (
     <div
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => { setHovered(false); setPendingDelete(false) }}
       className={`flex items-start gap-2 px-3 py-2.5 cursor-pointer border-b border-[#2a2a2a] transition-colors ${
         isSelected ? 'bg-[#094771]' : 'hover:bg-[#2a2d2e]'
       }`}
@@ -97,12 +91,26 @@ export function ScheduleItem({ schedule, isSelected, onSelect }: Props) {
           {workflow?.name ?? '(삭제된 워크플로우)'}
         </div>
         <div className="text-[10px] text-[#555] mt-0.5">{formatNextRun(schedule)}</div>
+
+        {pendingDelete && (
+          <div className="flex items-center gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
+            <span className="text-[10px] text-[#cccccc]">삭제하시겠습니까?</span>
+            <button
+              onClick={() => { deleteSchedule(schedule.id); setPendingDelete(false) }}
+              className="px-2 py-0.5 text-[10px] rounded bg-red-600 hover:bg-red-500 text-white transition-colors"
+            >확인</button>
+            <button
+              onClick={() => setPendingDelete(false)}
+              className="px-2 py-0.5 text-[10px] rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
+            >취소</button>
+          </div>
+        )}
       </div>
 
       {/* 삭제 버튼 (호버 시) */}
-      {hovered && (
+      {hovered && !pendingDelete && (
         <button
-          onClick={handleDelete}
+          onClick={(e) => { e.stopPropagation(); setPendingDelete(true) }}
           className="text-[#666] hover:text-red-400 transition-colors text-xs shrink-0"
           title="삭제"
         >
@@ -111,4 +119,4 @@ export function ScheduleItem({ schedule, isSelected, onSelect }: Props) {
       )}
     </div>
   )
-}
+})

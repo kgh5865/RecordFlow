@@ -12,12 +12,17 @@ const DEFAULT_DATA: StorageData = {
   schedules: []
 }
 
+let _cache: StorageData | null = null
+
 export function loadStorage(): StorageData {
+  if (_cache) return _cache
   const parsed = loadJSONSync<StorageData>(DATA_FILE, DEFAULT_DATA)
   // Migration: ensure schedules field exists in older data files
-  return { ...parsed, schedules: parsed.schedules ?? [] }
+  _cache = { ...parsed, schedules: parsed.schedules ?? [] }
+  return _cache
 }
 
 export async function saveStorage(data: StorageData): Promise<void> {
+  _cache = data
   await saveJSONAsync(DATA_FILE, data)
 }

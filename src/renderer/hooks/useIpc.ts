@@ -15,7 +15,7 @@ export function useIpc(): void {
     // codegen 완료 → workflow 생성
     window.electronAPI.onCodegenComplete((steps: WorkflowStep[]) => {
       if (dialog.type === 'new-workflow' && dialog.targetFolderId) {
-        const name = (dialog as { currentName?: string }).currentName ?? 'New Workflow'
+        const name = dialog.currentName ?? 'New Workflow'
         const workflow = createWorkflow(name, dialog.targetFolderId, steps)
         useUiStore.getState().selectWorkflow(workflow.id)
         closeDialog()
@@ -26,7 +26,6 @@ export function useIpc(): void {
     window.electronAPI.onCodegenError((err: string) => {
       console.error('[codegen error]', err)
       closeDialog()
-      alert(`Codegen error: ${err}`)
     })
 
     // runner step 업데이트
@@ -39,7 +38,7 @@ export function useIpc(): void {
       setRunning(null, null)
       setRunResult(result)
       if (!result.success) {
-        alert(`Run failed at step ${result.completedSteps + 1}: ${result.error}`)
+        console.error(`[runner] failed at step ${result.completedSteps + 1}: ${result.error}`)
       }
     })
 

@@ -11,11 +11,9 @@ export function Toolbar() {
   const activeScheduleCount = schedules.filter((s) => s.enabled).length
 
   const handleRecord = () => {
-    if (!selectedWorkflow) {
-      alert('먼저 좌측 패널에서 워크플로우를 선택하거나 새로 만들어주세요.')
-      return
-    }
-    useUiStore.getState().openDialog('new-workflow', {
+    if (!selectedWorkflow) return
+    useUiStore.getState().openDialog({
+      type: 'new-workflow',
       targetFolderId: selectedWorkflow.folderId,
       currentName: selectedWorkflow.name
     })

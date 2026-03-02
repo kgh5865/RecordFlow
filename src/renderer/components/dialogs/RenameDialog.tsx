@@ -9,15 +9,16 @@ export function RenameDialog() {
   const renameFolder = useWorkflowStore((s) => s.renameFolder)
   const renameWorkflow = useWorkflowStore((s) => s.renameWorkflow)
 
-  const [name, setName] = useState(dialog.currentName ?? '')
+  const currentName = dialog.type === 'rename-folder' || dialog.type === 'rename-workflow' ? dialog.currentName : ''
+  const [name, setName] = useState(currentName)
 
   const handleConfirm = () => {
     const trimmed = name.trim()
     if (!trimmed) return
 
-    if (dialog.type === 'rename-folder' && dialog.targetFolderId) {
+    if (dialog.type === 'rename-folder') {
       renameFolder(dialog.targetFolderId, trimmed)
-    } else if (dialog.type === 'rename-workflow' && dialog.targetWorkflowId) {
+    } else if (dialog.type === 'rename-workflow') {
       renameWorkflow(dialog.targetWorkflowId, trimmed)
     }
     closeDialog()

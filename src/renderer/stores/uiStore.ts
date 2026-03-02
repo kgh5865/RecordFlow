@@ -1,14 +1,15 @@
 import { create } from 'zustand'
 
 export type LeftTab = 'workflows' | 'schedules'
-type DialogType = 'new-workflow' | 'new-folder' | 'move-workflow' | 'rename-folder' | 'rename-workflow' | null
 
-interface DialogState {
-  type: DialogType
-  targetFolderId?: string
-  targetWorkflowId?: string
-  currentName?: string
-}
+// Discriminated union — 각 다이얼로그 타입별로 필요한 필드가 명확히 정의됨
+export type DialogState =
+  | { type: null }
+  | { type: 'new-folder' }
+  | { type: 'new-workflow'; targetFolderId?: string; currentName?: string }
+  | { type: 'rename-folder'; targetFolderId: string; currentName: string }
+  | { type: 'rename-workflow'; targetWorkflowId: string; currentName: string }
+  | { type: 'move-workflow'; targetWorkflowId: string }
 
 interface UiState {
   selectedWorkflowId: string | null
@@ -34,7 +35,7 @@ interface UiState {
   toggleFolder: (id: string) => void
   expandFolder: (id: string) => void
 
-  openDialog: (type: Exclude<DialogType, null>, opts?: Omit<DialogState, 'type'>) => void
+  openDialog: (dialog: Exclude<DialogState, { type: null }>) => void
   closeDialog: () => void
 
   setRunning: (workflowId: string | null, stepIndex: number | null) => void
@@ -75,7 +76,7 @@ export const useUiStore = create<UiState>((set) => ({
         : [...s.expandedFolderIds, id]
     })),
 
-  openDialog: (type, opts = {}) => set({ dialog: { type, ...opts } }),
+  openDialog: (dialog) => set({ dialog }),
 
   closeDialog: () => set({ dialog: { type: null } }),
 

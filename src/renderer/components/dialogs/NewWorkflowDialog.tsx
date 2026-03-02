@@ -11,6 +11,11 @@ export function NewWorkflowDialog() {
   const [recording, setRecording] = useState(false)
   const [error, setError] = useState('')
 
+  if (dialog.type !== 'new-workflow') { closeDialog(); return null }
+
+  const folderId = dialog.targetFolderId
+  if (!folderId) { closeDialog(); return null }
+
   const handleRecord = async () => {
     const trimmedName = name.trim()
     const trimmedUrl = url.trim()
@@ -19,12 +24,17 @@ export function NewWorkflowDialog() {
     setError('')
 
     // dialog에 이름 저장 (useIpc에서 사용)
-    useUiStore.setState((s) => ({
-      dialog: { ...s.dialog, currentName: trimmedName }
-    }))
+    useUiStore.setState({
+      dialog: { type: 'new-workflow', targetFolderId: folderId, currentName: trimmedName }
+    })
 
     setRecording(true)
-    await ipc.startCodegen(trimmedUrl)
+    try {
+      await ipc.startCodegen(trimmedUrl)
+    } catch (err) {
+      setError(`실행 오류: ${String(err)}`)
+      setRecording(false)
+    }
     // 완료는 useIpc의 onCodegenComplete에서 처리
   }
 
@@ -32,10 +42,6 @@ export function NewWorkflowDialog() {
     if (recording) ipc.stopCodegen()
     closeDialog()
   }
-
-  const folderId = dialog.targetFolderId
-
-  if (!folderId) { closeDialog(); return null }
 
   return (
     <Dialog
