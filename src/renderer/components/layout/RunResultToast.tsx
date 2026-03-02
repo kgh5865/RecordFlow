@@ -1,68 +1,141 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useUiStore } from '../../stores/uiStore'
+import { useWorkflowStore } from '../../stores/workflowStore'
+import { ActionBadge } from '../steps/ActionBadge'
 
 export function RunResultToast() {
   const lastRunResult = useUiStore((s) => s.lastRunResult)
   const setRunResult = useUiStore((s) => s.setRunResult)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const selectedWorkflowId = useUiStore((s) => s.selectedWorkflowId)
+  const workflows = useWorkflowStore((s) => s.workflows)
 
   useEffect(() => {
     if (!lastRunResult) return
-
-    if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => setRunResult(null), 5000)
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setRunResult(null)
     }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
   }, [lastRunResult, setRunResult])
 
   if (!lastRunResult) return null
 
   const { success, completedSteps, error } = lastRunResult
+  const workflow = workflows.find((w) => w.id === selectedWorkflowId)
+  const totalSteps = workflow?.steps.length ?? completedSteps
+  const failedStep = !success && workflow ? workflow.steps[completedSteps] : null
+
+  // 에러 메시지 정리: 첫 줄(핵심 메시지)과 스택 트레이스 분리
+  const errorLines = error?.split('\n') ?? []
+  const errorSummary = errorLines[0] ?? ''
+  const errorDetail = errorLines.slice(1).join('\n').trim()
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-start gap-3 w-[300px] px-4 py-3 rounded-xl shadow-2xl border animate-slide-in"
-      style={{
-        background: success ? '#1a2e1a' : '#2e1a1a',
-        borderColor: success ? '#2ea04340' : '#f8514940',
-      }}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.65)' }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) setRunResult(null) }}
     >
-      {/* 아이콘 */}
-      <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5 ${
-        success ? 'bg-[#2ea043]/20 text-[#4caf50]' : 'bg-red-500/20 text-red-400'
-      }`}>
-        {success
-          ? <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7L5.5 10.5L12 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          : <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 4L10 10M10 4L4 10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-        }
-      </div>
-
-      {/* 텍스트 */}
-      <div className="flex-1 min-w-0">
-        <div className={`text-[12px] font-semibold ${success ? 'text-[#4caf50]' : 'text-red-400'}`}>
-          {success ? '실행 완료' : '실행 실패'}
-        </div>
-        <div className="text-[11px] text-[#888] mt-0.5">
-          {success
-            ? `${completedSteps}개 step 모두 성공`
-            : `Step ${completedSteps + 1}에서 중단`
-          }
-        </div>
-        {!success && error && (
-          <div className="text-[10px] text-red-400/80 mt-1 break-all line-clamp-2" title={error}>
-            {error}
-          </div>
-        )}
-      </div>
-
-      {/* 닫기 버튼 */}
-      <button
-        onClick={() => setRunResult(null)}
-        className="shrink-0 text-[#555] hover:text-[#aaa] transition-colors mt-0.5 text-[16px] leading-none"
+      <div
+        className="w-[480px] bg-[#252526] border border-[#3c3c3c] rounded-xl shadow-2xl overflow-hidden"
+        onMouseDown={(e) => e.stopPropagation()}
       >
-        ×
-      </button>
+        {/* 상단 강조선 */}
+        <div className={`h-[3px] ${success ? 'bg-[#4caf50]' : 'bg-red-500'}`} />
+
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#3c3c3c]">
+          <div className="flex items-center gap-2.5">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+              success ? 'bg-[#4caf50]/15 text-[#4caf50]' : 'bg-red-500/15 text-red-400'
+            }`}>
+              {success
+                ? <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 6L4.5 9L10.5 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                : <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 3L9 9M9 3L3 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+              }
+            </div>
+            <span className={`text-[13px] font-semibold ${success ? 'text-[#4caf50]' : 'text-red-400'}`}>
+              {success ? '실행 완료' : '실행 실패'}
+            </span>
+            {workflow && (
+              <span className="text-[11px] text-[#666]">— {workflow.name}</span>
+            )}
+          </div>
+          <button
+            onClick={() => setRunResult(null)}
+            className="text-[#555] hover:text-[#ccc] transition-colors text-lg leading-none"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          {/* 진행 현황 */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] text-[#666]">진행 현황</span>
+              <span className="text-[11px] text-[#888]">
+                {completedSteps} / {totalSteps} steps
+              </span>
+            </div>
+            {/* 프로그레스 바 */}
+            <div className="w-full h-1.5 bg-[#3c3c3c] rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${success ? 'bg-[#4caf50]' : 'bg-red-500'}`}
+                style={{ width: totalSteps > 0 ? `${(completedSteps / totalSteps) * 100}%` : '0%' }}
+              />
+            </div>
+          </div>
+
+          {/* 실패한 Step 정보 */}
+          {failedStep && (
+            <div>
+              <div className="text-[11px] text-[#666] mb-2">실패한 Step</div>
+              <div className="flex items-center gap-2 px-3 py-2 bg-red-900/20 border border-red-500/20 rounded-lg">
+                <span className="text-[10px] text-[#555] w-5 text-right shrink-0">
+                  {failedStep.order + 1}
+                </span>
+                <ActionBadge action={failedStep.action} />
+                <span className="text-[11px] font-mono text-[#9cdcfe] truncate flex-1" title={failedStep.url ?? failedStep.selector}>
+                  {failedStep.url ?? failedStep.selector ?? ''}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* 에러 메시지 */}
+          {!success && error && (
+            <div>
+              <div className="text-[11px] text-[#666] mb-2">오류 메시지</div>
+              <div className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg overflow-hidden">
+                {/* 핵심 메시지 */}
+                <div className="px-3 py-2 text-[11px] text-red-400 border-b border-[#3c3c3c]">
+                  {errorSummary}
+                </div>
+                {/* 스택 트레이스 (접을 수 있는 영역) */}
+                {errorDetail && (
+                  <div className="px-3 py-2 max-h-[120px] overflow-y-auto">
+                    <pre className="text-[10px] text-[#555] whitespace-pre-wrap break-all font-mono leading-relaxed">
+                      {errorDetail}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 푸터 */}
+        <div className="flex justify-end px-5 py-3 border-t border-[#3c3c3c]">
+          <button
+            autoFocus
+            onClick={() => setRunResult(null)}
+            className="px-4 py-1.5 text-[12px] rounded-lg bg-[#3c3c3c] hover:bg-[#4a4a4a] text-[#cccccc] transition-colors"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
