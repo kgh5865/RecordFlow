@@ -35,6 +35,7 @@ export function ScheduleDetail() {
   const { schedules, selectedScheduleId, logs } = useScheduleStore()
   const workflows = useWorkflowStore((s) => s.workflows)
   const [runningNow, setRunningNow] = useState(false)
+  const [runError, setRunError] = useState('')
 
   const schedule = schedules.find((s) => s.id === selectedScheduleId)
 
@@ -51,9 +52,10 @@ export function ScheduleDetail() {
 
   const handleRunNow = async () => {
     if (!workflow || workflow.steps.length === 0) {
-      alert('실행할 step이 없습니다.')
+      setRunError('실행할 step이 없습니다.')
       return
     }
+    setRunError('')
     setRunningNow(true)
     try {
       await window.electronAPI.startRunner(workflow.steps)
@@ -78,14 +80,19 @@ export function ScheduleDetail() {
         </div>
         <div className="flex items-center gap-2">
           {workflow && (
-            <button
-              onClick={handleRunNow}
-              disabled={runningNow || workflow.steps.length === 0}
-              className="px-2 py-0.5 text-xs rounded bg-[#2ea043] hover:bg-[#3fb950] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              title="지금 실행"
-            >
-              {runningNow ? '실행 중...' : '▶ 지금 실행'}
-            </button>
+            <div className="flex flex-col items-end gap-0.5">
+              <button
+                onClick={handleRunNow}
+                disabled={runningNow || workflow.steps.length === 0}
+                className="px-2 py-0.5 text-xs rounded bg-[#2ea043] hover:bg-[#3fb950] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="지금 실행"
+              >
+                {runningNow ? '실행 중...' : '▶ 지금 실행'}
+              </button>
+              {runError && (
+                <span className="text-[10px] text-red-400">{runError}</span>
+              )}
+            </div>
           )}
           <span
             className={`text-[10px] px-2 py-0.5 rounded ${

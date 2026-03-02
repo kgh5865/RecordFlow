@@ -8,7 +8,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "dist": "electron-builder",
-    "poc": "node poc-codegen.mjs",
+    "poc": "node scripts/poc-codegen.mjs",
     "postinstall": "playwright install chromium"
   },
   "dependencies": {

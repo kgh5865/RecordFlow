@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import jsQR from 'jsqr'
 import { useSettingsStore } from '../../stores/settingsStore'
+import { Input } from '../ui/Input'
 import type { OtpProfile } from '../../../types/workflow.types'
 import { parseOtpAuthUri, parseMigrationQr } from '../../utils/otpUtils'
 
@@ -214,22 +215,21 @@ export function OtpSection() {
         <div className="bg-[#252526] border border-[#3c3c3c] rounded p-3 mb-3 space-y-2">
           <div>
             <label className="block text-[10px] text-[#888] mb-1">이름 (참조용)</label>
-            <input
+            <Input
               autoFocus
               value={otpName}
               onChange={(e) => setOtpName(e.target.value)}
               placeholder="예: gmail, github"
-              className="w-full px-2 py-1 text-xs bg-[#3c3c3c] text-[#cccccc] border border-[#555] rounded outline-none focus:border-[#007acc] caret-white"
             />
           </div>
           <div>
             <label className="block text-[10px] text-[#888] mb-1">Secret Key (Base32)</label>
-            <input
+            <Input
               value={otpSecret}
               onChange={(e) => setOtpSecret(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddOtp()}
               placeholder="예: JBSWY3DPEHPK3PXP"
-              className="w-full px-2 py-1 text-xs bg-[#3c3c3c] text-[#cccccc] border border-[#555] rounded outline-none focus:border-[#007acc] caret-white font-mono"
+              className="font-mono"
             />
           </div>
           {qrError && (

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useScheduleStore } from '../../stores/scheduleStore'
 import { useWorkflowStore } from '../../stores/workflowStore'
+import { Input } from '../ui/Input'
 import type { ScheduleType } from '../../../types/workflow.types'
 
 interface Props {
@@ -148,12 +149,10 @@ export function ScheduleDialog({ onClose }: Props) {
 
               {preset === '__custom__' && (
                 <div>
-                  <input
-                    type="text"
+                  <Input
                     value={customCron}
                     onChange={(e) => setCustomCron(e.target.value)}
                     placeholder="예: 0 9 * * 1-5 (평일 09:00)"
-                    className="w-full bg-[#3c3c3c] text-[#cccccc] text-xs rounded px-2 py-1.5 border border-[#555] focus:outline-none focus:border-[#007acc] placeholder:text-[#555]"
                   />
                 </div>
               )}
@@ -170,12 +169,11 @@ export function ScheduleDialog({ onClose }: Props) {
           {type === 'once' && (
             <div>
               <label className="block text-[11px] text-[#888] mb-1">날짜 / 시간</label>
-              <input
+              <Input
                 type="datetime-local"
                 value={scheduledAt}
                 min={nowLocal}
                 onChange={(e) => setScheduledAt(e.target.value)}
-                className="w-full bg-[#3c3c3c] text-[#cccccc] text-xs rounded px-2 py-1.5 border border-[#555] focus:outline-none focus:border-[#007acc]"
               />
             </div>
           )}
