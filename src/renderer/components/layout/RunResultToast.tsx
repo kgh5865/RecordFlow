@@ -8,57 +8,23 @@ import { ActionBadge } from '../steps/ActionBadge'
 interface ErrorHint {
   title: string
   steps: string[]
-  suggestions?: string[]  // 자동 추출된 권장 Selector 목록
-}
-
-// Playwright strict mode violation 에러 메시지에 포함된 요소 HTML에서
-// id / placeholder 를 추출하여 권장 Selector 목록을 생성
-function parseSelectorSuggestions(error: string): string[] {
-  const suggestions: string[] = []
-  const seen = new Set<string>()
-
-  // Playwright 에러 포맷:
-  //   1) <input id="userOTP" placeholder="OTP번호를 입력해주세요" ...>
-  //   2) <input id="userId"  placeholder="아이디를 입력하세요" ...>
-  for (const match of error.matchAll(/\d+\)\s*(<[^\n]+)/g)) {
-    const tag = match[1]
-
-    const id          = tag.match(/\bid="([^"]+)"/)
-    const placeholder = tag.match(/\bplaceholder="([^"]+)"/)
-
-    if (id?.[1] && !seen.has(`id:${id[1]}`)) {
-      suggestions.push(`locator('#${id[1]}')`)
-      seen.add(`id:${id[1]}`)
-    }
-    if (placeholder?.[1] && !seen.has(`ph:${placeholder[1]}`)) {
-      suggestions.push(`getByPlaceholder('${placeholder[1]}')`)
-      seen.add(`ph:${placeholder[1]}`)
-    }
-  }
-
-  return suggestions
 }
 
 function getErrorHint(error: string): ErrorHint | null {
   // strict mode violation: resolved to N elements
+  // 오류 메시지 예시: strict mode violation: getByRole('textbox', { name: '아이디' }) resolved to 2 elements
   const strictMatch = error.match(/strict mode violation:\s*(.+?)\s*resolved to (\d+) elements/)
   if (strictMatch) {
     const failedSelector = strictMatch[1]
-    const suggestions = parseSelectorSuggestions(error)
-
-    const steps = [
-      `"${failedSelector}" 표현식이 ${strictMatch[2]}개의 요소에 매칭되어 실패했습니다.`,
-      '실패한 Step의 파란 Selector를 클릭하여 편집 모드로 진입하세요.',
-    ]
-
-    if (suggestions.length > 0) {
-      steps.push('아래 권장 Selector 중 하나로 변경하세요.')
-    } else {
-      steps.push('F12 개발자 도구에서 요소의 정확한 id / placeholder 속성을 확인하세요.')
-      steps.push('locator(\'#정확한ID\') 또는 getByPlaceholder(\'placeholder 텍스트\') 형식으로 수정하세요.')
+    return {
+      title: '여러 요소에 매칭되는 Selector 문제',
+      steps: [
+        `"${failedSelector}" 표현식이 ${strictMatch[2]}개의 요소에 매칭되어 실패했습니다.`,
+        'F12 개발자 도구에서 요소의 정확한 id / name 속성을 확인하세요.',
+        '실패한 Step의 파란 Selector를 클릭하여 편집 모드로 진입하세요.',
+        'locator(\'#정확한ID\') 또는 getByPlaceholder(\'placeholder 텍스트\') 형식으로 수정하세요.',
+      ]
     }
-
-    return { title: '여러 요소에 매칭되는 Selector 문제', steps, suggestions }
   }
 
   // Timeout
@@ -243,21 +209,6 @@ export function RunResultToast() {
                       </li>
                     ))}
                   </ol>
-                  {hint.suggestions && hint.suggestions.length > 0 && (
-                    <div className="mt-2.5 pt-2.5 border-t border-[#4caf50]/15">
-                      <div className="text-[10px] text-[#666] mb-1.5">권장 Selector (복사 후 편집)</div>
-                      <div className="space-y-1">
-                        {hint.suggestions.map((s, i) => (
-                          <div
-                            key={i}
-                            className="px-2.5 py-1.5 bg-[#1e1e1e] border border-[#3c3c3c] rounded font-mono text-[11px] text-[#9cdcfe] select-text cursor-text"
-                          >
-                            {s}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
