@@ -12,6 +12,7 @@ export function FolderTree() {
   const selectWorkflow = useUiStore((s) => s.selectWorkflow)
 
   const nothingSelected = selectedFolderId === null && selectedWorkflowId === null
+  const rootFolders = useMemo(() => folders.filter((f) => !f.parentId), [folders])
 
   const handleEmptyClick = () => {
     selectFolder(null)
@@ -29,8 +30,6 @@ export function FolderTree() {
       </div>
     )
   }
-
-  const rootFolders = useMemo(() => folders.filter((f) => !f.parentId), [folders])
 
   return (
     <div className="flex flex-col min-h-full">
