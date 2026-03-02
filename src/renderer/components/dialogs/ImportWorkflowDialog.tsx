@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useWorkflowStore } from '../../stores/workflowStore'
 import { useUiStore } from '../../stores/uiStore'
 import { Dialog } from './_Dialog'
+import { FolderSelectList } from './_FolderSelectList'
 
 export function ImportWorkflowDialog() {
   const { dialog, closeDialog, showToast } = useUiStore()
@@ -45,30 +46,12 @@ export function ImportWorkflowDialog() {
           <p className="text-[11px] text-[#aaa] mb-1.5">
             저장할 폴더 선택 {folderError && <span className="text-red-400 ml-1">폴더를 선택해 주세요</span>}
           </p>
-          {folders.length === 0 ? (
-            <p className="text-[11px] text-[#666] italic">폴더가 없습니다. 먼저 폴더를 만들어 주세요.</p>
-          ) : (
-            <div className="flex flex-col gap-1 max-h-36 overflow-y-auto pr-1">
-              {folders.map((f) => (
-                <label
-                  key={f.id}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer ${
-                    targetFolderId === f.id ? 'bg-[#094771]' : 'hover:bg-[#3c3c3c]'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="import-folder"
-                    value={f.id}
-                    checked={targetFolderId === f.id}
-                    onChange={() => { setTargetFolderId(f.id); setFolderError(false) }}
-                    className="accent-blue-400"
-                  />
-                  <span className="text-[13px] text-[#cccccc]">📁 {f.name}</span>
-                </label>
-              ))}
-            </div>
-          )}
+          <FolderSelectList
+            folders={folders}
+            selectedId={targetFolderId}
+            onChange={(id) => { setTargetFolderId(id); setFolderError(false) }}
+            radioName="import-folder"
+          />
         </div>
 
         {/* 마스킹 안내 */}
