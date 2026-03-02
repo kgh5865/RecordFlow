@@ -11,11 +11,16 @@ interface SensitiveRule {
 }
 
 const SENSITIVE_RULES: SensitiveRule[] = [
-  { pattern: /password|passwd|pwd/i,                        type: 'password', placeholder: '{{password}}' },
-  { pattern: /username|userid|user_id|loginid|login.id/i,   type: 'username', placeholder: '{{username}}' },
-  { pattern: /\bemail\b/i,                                  type: 'email',    placeholder: '{{email}}' },
-  { pattern: /\botp\b|\btotp\b|\bmfa\b|\b2fa\b/i,          type: 'otp',      placeholder: '{{otp}}' },
-  { pattern: /(?:^|[\s[#"'=])(id)(?:[\s\]"'=]|$)/i,        type: 'id',       placeholder: '{{id}}' },
+  // 비밀번호 / password
+  { pattern: /password|passwd|pwd|비밀번호|패스워드/i,                        type: 'password', placeholder: '{{password}}' },
+  // 아이디 / username
+  { pattern: /username|userid|user_id|loginid|login.id|아이디|사용자명|사용자.?이름/i, type: 'username', placeholder: '{{username}}' },
+  // 이메일 / email
+  { pattern: /\bemail\b|이메일/i,                                             type: 'email',    placeholder: '{{email}}' },
+  // OTP / 인증번호
+  { pattern: /\botp\b|\btotp\b|\bmfa\b|\b2fa\b|일회용|인증번호/i,            type: 'otp',      placeholder: '{{otp}}' },
+  // id (영문 단독)
+  { pattern: /(?:^|[\s[#"'=])(id)(?:[\s\]"'=]|$)/i,                         type: 'id',       placeholder: '{{id}}' },
 ]
 
 const OTP_TOKEN_PATTERN = /^\{\{otp:\s*.+?\s*\}\}$/
