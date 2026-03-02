@@ -12,15 +12,17 @@ interface ErrorHint {
 
 function getErrorHint(error: string): ErrorHint | null {
   // strict mode violation: resolved to N elements
-  const strictMatch = error.match(/strict mode violation.*resolved to (\d+) elements/s)
+  // 오류 메시지 예시: strict mode violation: getByRole('textbox', { name: '아이디' }) resolved to 2 elements
+  const strictMatch = error.match(/strict mode violation:\s*(.+?)\s*resolved to (\d+) elements/)
   if (strictMatch) {
+    const failedSelector = strictMatch[1]
     return {
       title: '여러 요소에 매칭되는 Selector 문제',
       steps: [
-        'F12 개발자 도구에서 정확한 id/name 속성을 확인하세요.',
+        `"${failedSelector}" 표현식이 ${strictMatch[2]}개의 요소에 매칭되어 실패했습니다.`,
+        'F12 개발자 도구에서 요소의 정확한 id / name 속성을 확인하세요.',
         '실패한 Step의 파란 Selector를 클릭하여 편집 모드로 진입하세요.',
         'locator(\'#정확한ID\') 또는 getByPlaceholder(\'placeholder 텍스트\') 형식으로 수정하세요.',
-        '예: locator(\'#userOTP\')  /  getByPlaceholder(\'OTP번호를 입력해주세요.\')',
       ]
     }
   }
