@@ -2,15 +2,15 @@ import type { BrowserWindow } from 'electron'
 import * as cron from 'node-cron'
 import { parseExpression } from 'cron-parser'
 import { randomUUID } from 'crypto'
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import type { Schedule, ScheduleLog } from '../../types/workflow.types'
 import { runWorkflow } from './runner.service'
 import { loadStorage, saveStorage } from './storage.service'
+import { saveJSONAsync } from '../utils/json-storage'
 
-const DATA_DIR = app.getPath('userData')
-const LOG_FILE = join(DATA_DIR, 'schedule-logs.json')
+const LOG_FILE = join(app.getPath('userData'), 'schedule-logs.json')
 
 // Active cron tasks: scheduleId → cron.ScheduledTask
 const cronTasks = new Map<string, cron.ScheduledTask>()
@@ -121,7 +121,7 @@ async function executeSchedule(scheduleId: string): Promise<void> {
       error: result.error
     }
 
-    saveScheduleLog(log)
+    await saveScheduleLog(log)
 
     // Update schedule metadata
     const now = new Date().toISOString()
@@ -133,7 +133,7 @@ async function executeSchedule(scheduleId: string): Promise<void> {
       }
       return { ...s, lastRunAt: now, nextRunAt: s.cronExpression ? calcNextRunAt(s.cronExpression) : s.nextRunAt }
     })
-    saveStorage({ ...freshStorage, schedules: updatedSchedules })
+    await saveStorage({ ...freshStorage, schedules: updatedSchedules })
 
     // Notify renderer
     if (mainWin && !mainWin.isDestroyed()) {
@@ -162,13 +162,11 @@ function loadLogs(): ScheduleLog[] {
   }
 }
 
-function saveScheduleLog(log: ScheduleLog): void {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
+async function saveScheduleLog(log: ScheduleLog): Promise<void> {
   const logs = loadLogs()
   logs.unshift(log)
   // Keep latest 500 entries
-  const trimmed = logs.slice(0, 500)
-  writeFileSync(LOG_FILE, JSON.stringify(trimmed, null, 2), 'utf-8')
+  await saveJSONAsync(LOG_FILE, logs.slice(0, 500))
 }
 
 export function getScheduleLogs(scheduleId: string, limit = 20): ScheduleLog[] {

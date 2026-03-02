@@ -4,8 +4,9 @@ import { useSettingsStore } from '../../stores/settingsStore'
 import { useUiStore } from '../../stores/uiStore'
 import type { OtpProfile } from '../../../types/workflow.types'
 
+// --- Module-level helpers ---
+
 function parseOtpAuthUri(uri: string): { name: string; secret: string } | null {
-  // otpauth://totp/LABEL?secret=SECRET&issuer=ISSUER
   const match = uri.trim().match(/^otpauth:\/\/(totp|hotp)\/([^?]*)\??(.*)$/i)
   if (!match) return null
   const label = decodeURIComponent(match[2].replace(/\+/g, ' '))
@@ -124,31 +125,71 @@ async function decodeQrFromFile(file: File): Promise<string | null> {
   })
 }
 
-export function SettingsPanel() {
-  const { settings, saveSettings } = useSettingsStore()
-  const setSettingsPanelOpen = useUiStore((s) => s.setSettingsPanelOpen)
+// --- BackgroundModeSection ---
 
-  // OTP 추가 폼 상태
+function BackgroundModeSection({ backgroundMode, onToggle }: { backgroundMode: boolean; onToggle: () => void }) {
+  return (
+    <section>
+      <h3 className="text-[11px] font-semibold text-[#888] uppercase tracking-wider mb-3">실행</h3>
+
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <div className="text-[13px] text-[#cccccc] mb-1">백그라운드 실행</div>
+          <div className="text-[11px] text-[#666] leading-relaxed">
+            창 닫기(✕) 시 앱을 종료하는 대신 시스템 트레이로 최소화합니다.
+            예약 스케줄이 계속 동작합니다.
+          </div>
+          {backgroundMode && (
+            <div className="text-[10px] text-[#4caf50] mt-1">
+              ● 트레이 아이콘으로 앱을 열거나 종료할 수 있습니다.
+            </div>
+          )}
+        </div>
+        <button
+          onClick={onToggle}
+          className={`shrink-0 relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+            backgroundMode ? 'bg-[#4caf50]' : 'bg-[#3c3c3c]'
+          }`}
+          role="switch"
+          aria-checked={backgroundMode}
+        >
+          <span
+            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+              backgroundMode ? 'translate-x-[18px]' : 'translate-x-[3px]'
+            }`}
+          />
+        </button>
+      </div>
+
+      {!backgroundMode && (
+        <div className="mt-3 text-[11px] text-[#666] bg-[#2a2a2a] rounded p-2">
+          ※ OFF 상태에서 활성 스케줄이 있는 경우 창 닫기 시 경고가 표시됩니다.
+        </div>
+      )}
+    </section>
+  )
+}
+
+// --- OtpSection ---
+
+function OtpSection() {
+  const { settings, saveSettings } = useSettingsStore()
+
   const [addingOtp, setAddingOtp] = useState(false)
   const [otpName, setOtpName] = useState('')
   const [otpSecret, setOtpSecret] = useState('')
   const [qrError, setQrError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Migration QR 선택 상태
   const [migrationEntries, setMigrationEntries] = useState<Array<{ name: string; secret: string }> | null>(null)
   const [selectedMigrationIndices, setSelectedMigrationIndices] = useState<Set<number>>(new Set())
-
-  const handleToggleBackground = async () => {
-    await saveSettings({ ...settings, backgroundMode: !settings.backgroundMode })
-  }
 
   const handleAddOtp = async () => {
     const name = otpName.trim()
     const secret = otpSecret.trim().replace(/\s/g, '').toUpperCase()
     if (!name || !secret) return
     if (settings.otpProfiles.some((p) => p.name === name)) {
-      alert(`"${name}" 이름이 이미 존재합니다.`)
+      setQrError(`"${name}" 이름이 이미 존재합니다.`)
       return
     }
     const newProfile: OtpProfile = { id: crypto.randomUUID(), name, secret }
@@ -203,7 +244,6 @@ export function SettingsPanel() {
     const raw = await decodeQrFromFile(file)
     if (!raw) { setQrError('QR 코드를 인식할 수 없습니다.'); return }
 
-    // 표준 otpauth:// 형식
     const parsed = parseOtpAuthUri(raw)
     if (parsed) {
       setOtpName(parsed.name)
@@ -213,12 +253,10 @@ export function SettingsPanel() {
       return
     }
 
-    // Google Authenticator migration 형식
     if (raw.startsWith('otpauth-migration://')) {
       const entries = parseMigrationQr(raw)
       if (!entries) { setQrError('migration QR 파싱에 실패했습니다.'); return }
       setMigrationEntries(entries)
-      // 기존 등록되지 않은 계정만 기본 선택
       const existingNames = new Set(settings.otpProfiles.map((p) => p.name))
       setSelectedMigrationIndices(new Set(entries.map((_, i) => i).filter((i) => !existingNames.has(entries[i].name))))
       setAddingOtp(false)
@@ -229,8 +267,182 @@ export function SettingsPanel() {
   }
 
   return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[11px] font-semibold text-[#888] uppercase tracking-wider">
+          OTP 프로필
+        </h3>
+        {!addingOtp && !migrationEntries && (
+          <button
+            onClick={() => setAddingOtp(true)}
+            className="text-[11px] text-[#007acc] hover:text-[#1a9fe0] transition-colors"
+          >
+            + 추가
+          </button>
+        )}
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleQrScan}
+      />
+
+      {migrationEntries && (
+        <div className="bg-[#252526] border border-[#3c3c3c] rounded p-3 mb-3 space-y-2">
+          <div className="text-[11px] text-[#cccccc] mb-2">
+            QR에서 {migrationEntries.length}개 계정을 찾았습니다.
+          </div>
+          <div className="space-y-1">
+            {migrationEntries.map((entry, i) => {
+              const alreadyExists = settings.otpProfiles.some((p) => p.name === entry.name)
+              return (
+                <label
+                  key={i}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors ${
+                    alreadyExists ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#2a2d2e]'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedMigrationIndices.has(i)}
+                    disabled={alreadyExists}
+                    onChange={() => !alreadyExists && toggleMigrationIndex(i)}
+                    className="accent-[#007acc]"
+                  />
+                  <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f3f] border border-[#007acc]/50 text-[#4fc3f7] text-[10px] rounded">
+                    🔑 <span className="font-medium">{entry.name}</span>
+                  </span>
+                  {alreadyExists && (
+                    <span className="text-[10px] text-[#555]">이미 등록됨</span>
+                  )}
+                </label>
+              )
+            })}
+          </div>
+          {qrError && <div className="text-[10px] text-red-400">{qrError}</div>}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={handleAddMigrationOtps}
+              className="px-3 py-1 text-xs rounded bg-[#0e639c] hover:bg-[#1177bb] text-white transition-colors"
+            >
+              선택 추가 ({selectedMigrationIndices.size})
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1 text-xs rounded border border-[#444] hover:border-[#007acc] text-[#888] hover:text-[#4fc3f7] transition-colors"
+            >
+              📷 QR
+            </button>
+            <button
+              onClick={() => { setMigrationEntries(null); setSelectedMigrationIndices(new Set()); setQrError('') }}
+              className="px-3 py-1 text-xs rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
+      {addingOtp && (
+        <div className="bg-[#252526] border border-[#3c3c3c] rounded p-3 mb-3 space-y-2">
+          <div>
+            <label className="block text-[10px] text-[#888] mb-1">이름 (참조용)</label>
+            <input
+              autoFocus
+              value={otpName}
+              onChange={(e) => setOtpName(e.target.value)}
+              placeholder="예: gmail, github"
+              className="w-full px-2 py-1 text-xs bg-[#3c3c3c] text-[#cccccc] border border-[#555] rounded outline-none focus:border-[#007acc] caret-white"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-[#888] mb-1">Secret Key (Base32)</label>
+            <input
+              value={otpSecret}
+              onChange={(e) => setOtpSecret(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddOtp()}
+              placeholder="예: JBSWY3DPEHPK3PXP"
+              className="w-full px-2 py-1 text-xs bg-[#3c3c3c] text-[#cccccc] border border-[#555] rounded outline-none focus:border-[#007acc] caret-white font-mono"
+            />
+          </div>
+          {qrError && (
+            <div className="text-[10px] text-red-400">{qrError}</div>
+          )}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={handleAddOtp}
+              className="px-3 py-1 text-xs rounded bg-[#0e639c] hover:bg-[#1177bb] text-white transition-colors"
+            >
+              저장
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1 text-xs rounded border border-[#444] hover:border-[#007acc] text-[#888] hover:text-[#4fc3f7] transition-colors"
+            >
+              📷 QR
+            </button>
+            <button
+              onClick={() => { setAddingOtp(false); setOtpName(''); setOtpSecret(''); setQrError('') }}
+              className="px-3 py-1 text-xs rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
+      {settings.otpProfiles.length === 0 && !addingOtp && !migrationEntries ? (
+        <div className="text-[11px] text-[#555] italic">등록된 OTP 프로필이 없습니다.</div>
+      ) : (
+        <div className="space-y-1">
+          {settings.otpProfiles.map((profile) => (
+            <div
+              key={profile.id}
+              className="flex items-center justify-between px-3 py-2 bg-[#252526] border border-[#3c3c3c] rounded group"
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f3f] border border-[#007acc]/50 text-[#4fc3f7] text-[10px] rounded">
+                  🔑 <span className="font-medium">{profile.name}</span>
+                </span>
+              </div>
+              <button
+                onClick={() => handleDeleteOtp(profile.id)}
+                className="text-[#555] hover:text-red-400 transition-colors text-xs opacity-0 group-hover:opacity-100"
+                title="삭제"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-3 text-[10px] text-[#555] bg-[#2a2a2a] rounded p-2 leading-relaxed">
+        step의 value 편집 시{' '}
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f3f] border border-[#007acc]/50 text-[#4fc3f7] rounded align-middle">
+          🔑 <span className="font-medium">이름</span>
+        </span>{' '}
+        배지를 선택하면 실행 시점에 OTP 코드가 자동 생성됩니다.
+      </div>
+    </section>
+  )
+}
+
+// --- SettingsPanel ---
+
+export function SettingsPanel() {
+  const { settings, saveSettings } = useSettingsStore()
+  const setSettingsPanelOpen = useUiStore((s) => s.setSettingsPanelOpen)
+
+  const handleToggleBackground = async () => {
+    await saveSettings({ ...settings, backgroundMode: !settings.backgroundMode })
+  }
+
+  return (
     <div className="flex-1 flex flex-col bg-[#1e1e1e] overflow-hidden">
-      {/* 헤더 */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-[#3c3c3c] shrink-0">
         <span className="text-sm font-medium text-[#cccccc]">설정</span>
         <button
@@ -242,215 +454,12 @@ export function SettingsPanel() {
         </button>
       </div>
 
-      {/* 설정 항목 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-
-        {/* 실행 설정 */}
-        <section>
-          <h3 className="text-[11px] font-semibold text-[#888] uppercase tracking-wider mb-3">실행</h3>
-
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="text-[13px] text-[#cccccc] mb-1">백그라운드 실행</div>
-              <div className="text-[11px] text-[#666] leading-relaxed">
-                창 닫기(✕) 시 앱을 종료하는 대신 시스템 트레이로 최소화합니다.
-                예약 스케줄이 계속 동작합니다.
-              </div>
-              {settings.backgroundMode && (
-                <div className="text-[10px] text-[#4caf50] mt-1">
-                  ● 트레이 아이콘으로 앱을 열거나 종료할 수 있습니다.
-                </div>
-              )}
-            </div>
-            <button
-              onClick={handleToggleBackground}
-              className={`shrink-0 relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                settings.backgroundMode ? 'bg-[#4caf50]' : 'bg-[#3c3c3c]'
-              }`}
-              role="switch"
-              aria-checked={settings.backgroundMode}
-            >
-              <span
-                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                  settings.backgroundMode ? 'translate-x-[18px]' : 'translate-x-[3px]'
-                }`}
-              />
-            </button>
-          </div>
-
-          {!settings.backgroundMode && (
-            <div className="mt-3 text-[11px] text-[#666] bg-[#2a2a2a] rounded p-2">
-              ※ OFF 상태에서 활성 스케줄이 있는 경우 창 닫기 시 경고가 표시됩니다.
-            </div>
-          )}
-        </section>
-
-        {/* OTP 프로필 */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[11px] font-semibold text-[#888] uppercase tracking-wider">
-              OTP 프로필
-            </h3>
-            {!addingOtp && !migrationEntries && (
-              <button
-                onClick={() => setAddingOtp(true)}
-                className="text-[11px] text-[#007acc] hover:text-[#1a9fe0] transition-colors"
-              >
-                + 추가
-              </button>
-            )}
-          </div>
-
-          {/* QR 스캔용 hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleQrScan}
-          />
-
-          {/* Migration QR 선택 UI */}
-          {migrationEntries && (
-            <div className="bg-[#252526] border border-[#3c3c3c] rounded p-3 mb-3 space-y-2">
-              <div className="text-[11px] text-[#cccccc] mb-2">
-                QR에서 {migrationEntries.length}개 계정을 찾았습니다.
-              </div>
-              <div className="space-y-1">
-                {migrationEntries.map((entry, i) => {
-                  const alreadyExists = settings.otpProfiles.some((p) => p.name === entry.name)
-                  return (
-                    <label
-                      key={i}
-                      className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors ${
-                        alreadyExists ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#2a2d2e]'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedMigrationIndices.has(i)}
-                        disabled={alreadyExists}
-                        onChange={() => !alreadyExists && toggleMigrationIndex(i)}
-                        className="accent-[#007acc]"
-                      />
-                      <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f3f] border border-[#007acc]/50 text-[#4fc3f7] text-[10px] rounded">
-                        🔑 <span className="font-medium">{entry.name}</span>
-                      </span>
-                      {alreadyExists && (
-                        <span className="text-[10px] text-[#555]">이미 등록됨</span>
-                      )}
-                    </label>
-                  )
-                })}
-              </div>
-              {qrError && <div className="text-[10px] text-red-400">{qrError}</div>}
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={handleAddMigrationOtps}
-                  className="px-3 py-1 text-xs rounded bg-[#0e639c] hover:bg-[#1177bb] text-white transition-colors"
-                >
-                  선택 추가 ({selectedMigrationIndices.size})
-                </button>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-3 py-1 text-xs rounded border border-[#444] hover:border-[#007acc] text-[#888] hover:text-[#4fc3f7] transition-colors"
-                >
-                  📷 QR
-                </button>
-                <button
-                  onClick={() => { setMigrationEntries(null); setSelectedMigrationIndices(new Set()); setQrError('') }}
-                  className="px-3 py-1 text-xs rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
-                >
-                  취소
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 수동 추가 폼 */}
-          {addingOtp && (
-            <div className="bg-[#252526] border border-[#3c3c3c] rounded p-3 mb-3 space-y-2">
-              <div>
-                <label className="block text-[10px] text-[#888] mb-1">이름 (참조용)</label>
-                <input
-                  autoFocus
-                  value={otpName}
-                  onChange={(e) => setOtpName(e.target.value)}
-                  placeholder="예: gmail, github"
-                  className="w-full px-2 py-1 text-xs bg-[#3c3c3c] text-[#cccccc] border border-[#555] rounded outline-none focus:border-[#007acc] caret-white"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] text-[#888] mb-1">Secret Key (Base32)</label>
-                <input
-                  value={otpSecret}
-                  onChange={(e) => setOtpSecret(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddOtp()}
-                  placeholder="예: JBSWY3DPEHPK3PXP"
-                  className="w-full px-2 py-1 text-xs bg-[#3c3c3c] text-[#cccccc] border border-[#555] rounded outline-none focus:border-[#007acc] caret-white font-mono"
-                />
-              </div>
-              {qrError && (
-                <div className="text-[10px] text-red-400">{qrError}</div>
-              )}
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={handleAddOtp}
-                  className="px-3 py-1 text-xs rounded bg-[#0e639c] hover:bg-[#1177bb] text-white transition-colors"
-                >
-                  저장
-                </button>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-3 py-1 text-xs rounded border border-[#444] hover:border-[#007acc] text-[#888] hover:text-[#4fc3f7] transition-colors"
-                >
-                  📷 QR
-                </button>
-                <button
-                  onClick={() => { setAddingOtp(false); setOtpName(''); setOtpSecret(''); setQrError('') }}
-                  className="px-3 py-1 text-xs rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
-                >
-                  취소
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 프로필 목록 */}
-          {settings.otpProfiles.length === 0 && !addingOtp && !migrationEntries ? (
-            <div className="text-[11px] text-[#555] italic">등록된 OTP 프로필이 없습니다.</div>
-          ) : (
-            <div className="space-y-1">
-              {settings.otpProfiles.map((profile) => (
-                <div
-                  key={profile.id}
-                  className="flex items-center justify-between px-3 py-2 bg-[#252526] border border-[#3c3c3c] rounded group"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f3f] border border-[#007acc]/50 text-[#4fc3f7] text-[10px] rounded">
-                      🔑 <span className="font-medium">{profile.name}</span>
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteOtp(profile.id)}
-                    className="text-[#555] hover:text-red-400 transition-colors text-xs opacity-0 group-hover:opacity-100"
-                    title="삭제"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-3 text-[10px] text-[#555] bg-[#2a2a2a] rounded p-2 leading-relaxed">
-            step의 value 편집 시{' '}
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f3f] border border-[#007acc]/50 text-[#4fc3f7] rounded align-middle">
-              🔑 <span className="font-medium">이름</span>
-            </span>{' '}
-            배지를 선택하면 실행 시점에 OTP 코드가 자동 생성됩니다.
-          </div>
-        </section>
+        <BackgroundModeSection
+          backgroundMode={settings.backgroundMode}
+          onToggle={handleToggleBackground}
+        />
+        <OtpSection />
       </div>
     </div>
   )

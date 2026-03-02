@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useWorkflowStore } from '../../stores/workflowStore'
 import { useUiStore } from '../../stores/uiStore'
 import { ipc } from '../../services/ipc.service'
@@ -15,6 +15,9 @@ export function StepPanel() {
 
   const workflow = workflows.find((w) => w.id === selectedWorkflowId)
   const isDirty = workflow ? dirtyWorkflowIds.includes(workflow.id) : false
+
+  const [pendingDiscard, setPendingDiscard] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState(false)
 
   // Ctrl+S 단축키로 저장
   useEffect(() => {
@@ -41,10 +44,6 @@ export function StepPanel() {
   const isRunning = runningWorkflowId === workflow.id
 
   const handleRun = async () => {
-    if (workflow.steps.length === 0) {
-      alert('실행할 step이 없습니다.')
-      return
-    }
     setRunning(workflow.id, 0)
     await ipc.startRunner(workflow.steps)
   }
@@ -52,13 +51,6 @@ export function StepPanel() {
   const handleStop = () => {
     ipc.stopCodegen()
     setRunning(null, null)
-  }
-
-  const handleDelete = () => {
-    if (confirm(`"${workflow.name}"을 삭제하시겠습니까?`)) {
-      deleteWorkflow(workflow.id)
-      selectWorkflow(null)
-    }
   }
 
   return (
@@ -83,17 +75,27 @@ export function StepPanel() {
               >
                 💾 Save
               </button>
-              <button
-                onClick={() => {
-                  if (confirm('편집 내용을 되돌리시겠습니까?')) {
-                    discardWorkflow(workflow.id)
-                  }
-                }}
-                className="px-3 py-0.5 text-xs rounded bg-[#555] hover:bg-[#666] text-white transition-colors"
-                title="편집 전 상태로 되돌리기"
-              >
-                ↩ Discard
-              </button>
+              {pendingDiscard ? (
+                <span className="flex items-center gap-1 shrink-0">
+                  <span className="text-[10px] text-[#cccccc]">되돌리시겠습니까?</span>
+                  <button
+                    onClick={() => { discardWorkflow(workflow.id); setPendingDiscard(false) }}
+                    className="px-2 py-0.5 text-xs rounded bg-[#555] hover:bg-[#666] text-white transition-colors"
+                  >확인</button>
+                  <button
+                    onClick={() => setPendingDiscard(false)}
+                    className="px-2 py-0.5 text-xs rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
+                  >취소</button>
+                </span>
+              ) : (
+                <button
+                  onClick={() => setPendingDiscard(true)}
+                  className="px-3 py-0.5 text-xs rounded bg-[#555] hover:bg-[#666] text-white transition-colors"
+                  title="편집 전 상태로 되돌리기"
+                >
+                  ↩ Discard
+                </button>
+              )}
             </>
           )}
           {isRunning ? (
@@ -113,14 +115,28 @@ export function StepPanel() {
               ▶ Run
             </button>
           )}
-          <button
-            onClick={handleDelete}
-            disabled={isRunning}
-            className="px-3 py-0.5 text-xs rounded bg-red-600 hover:bg-red-500 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            title="workflow 삭제"
-          >
-            🗑 Delete
-          </button>
+          {pendingDelete ? (
+            <span className="flex items-center gap-1 shrink-0">
+              <span className="text-[10px] text-[#cccccc]">삭제?</span>
+              <button
+                onClick={() => { deleteWorkflow(workflow.id); selectWorkflow(null); setPendingDelete(false) }}
+                className="px-2 py-0.5 text-xs rounded bg-red-600 hover:bg-red-500 text-white transition-colors"
+              >확인</button>
+              <button
+                onClick={() => setPendingDelete(false)}
+                className="px-2 py-0.5 text-xs rounded bg-[#3c3c3c] hover:bg-[#505050] text-[#cccccc] transition-colors"
+              >취소</button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setPendingDelete(true)}
+              disabled={isRunning}
+              className="px-3 py-0.5 text-xs rounded bg-red-600 hover:bg-red-500 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title="workflow 삭제"
+            >
+              🗑 Delete
+            </button>
+          )}
         </div>
       </div>
 

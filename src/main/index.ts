@@ -1,23 +1,16 @@
-import { app, BrowserWindow, ipcMain, shell, Tray, Menu, nativeImage, dialog } from 'electron'
+import { app, BrowserWindow, shell, Tray, Menu, nativeImage, dialog } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
-import { loadStorage, saveStorage } from './services/storage.service'
-import { startCodegen, stopCodegen } from './services/codegen.service'
-import { runWorkflow } from './services/runner.service'
+import { loadStorage } from './services/storage.service'
+import { stopCodegen } from './services/codegen.service'
 import { isChromiumInstalled, installChromium } from './services/setup.service'
-import { loadSettings, saveSettings } from './services/settings.service'
+import { loadSettings } from './services/settings.service'
 import {
   initScheduler,
-  registerSchedule,
-  unregisterSchedule,
   stopAllSchedules,
-  calcNextRunAt,
-  isValidCron,
-  getScheduleLogs,
   setMainWindow
 } from './services/scheduler.service'
-import type { StorageData, WorkflowStep, Schedule } from '../types/workflow.types'
-import { randomUUID } from 'crypto'
+import { registerIpcHandlers } from './ipc-handlers'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -138,128 +131,13 @@ function createWindow(): void {
   setMainWindow(mainWindow)
 }
 
-// --- Storage IPC ---
+// --- IPC Handlers ---
 
-ipcMain.handle('storage:load', () => loadStorage())
-
-ipcMain.handle('storage:save', (_event, data: StorageData) => {
-  // Merge: preserve schedules if not provided by caller
-  const existing = loadStorage()
-  saveStorage({ ...existing, ...data, schedules: data.schedules ?? existing.schedules ?? [] })
-})
-
-// --- Codegen IPC ---
-
-ipcMain.handle('codegen:start', (_event, url: string) => {
-  if (!mainWindow) return
-  startCodegen(mainWindow, url)
-})
-
-ipcMain.handle('codegen:stop', () => stopCodegen())
-
-// --- Runner IPC ---
-
-ipcMain.handle('runner:start', async (_event, steps: WorkflowStep[]) => {
-  if (!mainWindow) return
-  await runWorkflow(mainWindow, steps)
-})
-
-// --- Schedule IPC ---
-
-ipcMain.handle('schedule:list', () => {
-  return loadStorage().schedules
-})
-
-ipcMain.handle('schedule:create', (_event, data: Omit<Schedule, 'id' | 'createdAt' | 'nextRunAt'>) => {
-  const storage = loadStorage()
-  const now = new Date().toISOString()
-
-  const schedule: Schedule = {
-    ...data,
-    id: randomUUID(),
-    createdAt: now,
-    nextRunAt: data.type === 'cron' && data.cronExpression ? calcNextRunAt(data.cronExpression) : undefined
-  }
-
-  storage.schedules.push(schedule)
-  saveStorage(storage)
-
-  if (schedule.enabled) {
-    registerSchedule(schedule)
-  }
-
-  return schedule
-})
-
-ipcMain.handle('schedule:update', (_event, id: string, patch: Partial<Schedule>) => {
-  const storage = loadStorage()
-  const idx = storage.schedules.findIndex((s) => s.id === id)
-  if (idx === -1) throw new Error('Schedule not found')
-
-  const updated: Schedule = {
-    ...storage.schedules[idx],
-    ...patch,
-    nextRunAt:
-      patch.cronExpression
-        ? calcNextRunAt(patch.cronExpression)
-        : storage.schedules[idx].nextRunAt
-  }
-  storage.schedules[idx] = updated
-  saveStorage(storage)
-
-  // Re-register job with updated settings
-  unregisterSchedule(id)
-  if (updated.enabled) registerSchedule(updated)
-
-  return updated
-})
-
-ipcMain.handle('schedule:delete', (_event, id: string) => {
-  const storage = loadStorage()
-  unregisterSchedule(id)
-  storage.schedules = storage.schedules.filter((s) => s.id !== id)
-  saveStorage(storage)
-})
-
-ipcMain.handle('schedule:toggle', (_event, id: string, enabled: boolean) => {
-  const storage = loadStorage()
-  const idx = storage.schedules.findIndex((s) => s.id === id)
-  if (idx === -1) throw new Error('Schedule not found')
-
-  const updated: Schedule = { ...storage.schedules[idx], enabled }
-  storage.schedules[idx] = updated
-  saveStorage(storage)
-
-  if (enabled) {
-    registerSchedule(updated)
-  } else {
-    unregisterSchedule(id)
-  }
-
-  return updated
-})
-
-ipcMain.handle('schedule:logs', (_event, scheduleId: string, limit?: number) => {
-  return getScheduleLogs(scheduleId, limit)
-})
-
-ipcMain.handle('schedule:validate-cron', (_event, expression: string) => {
-  return isValidCron(expression)
-})
-
-// --- Settings IPC ---
-
-ipcMain.handle('settings:get', () => loadSettings())
-
-ipcMain.handle('settings:save', (_event, settings) => {
-  saveSettings(settings)
-  // Tray 조건부 생성/제거
-  if (settings.backgroundMode) {
-    setupTray()
-  } else {
-    destroyTray()
-  }
-})
+registerIpcHandlers(
+  () => mainWindow,
+  setupTray,
+  destroyTray
+)
 
 // --- App lifecycle ---
 

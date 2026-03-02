@@ -1,6 +1,5 @@
 import { existsSync } from 'fs'
 import { spawn } from 'child_process'
-import { join } from 'path'
 import { app } from 'electron'
 import { createRequire } from 'module'
 
@@ -19,10 +18,11 @@ export async function isChromiumInstalled(): Promise<boolean> {
 
 export function installChromium(onLog: (msg: string) => void): Promise<void> {
   return new Promise((resolve, reject) => {
-    // 개발: node_modules/.bin/playwright
-    // 배포: app.getAppPath()/node_modules/.bin/playwright
-    const bin = join(app.getAppPath(), 'node_modules', '.bin', 'playwright')
-    const proc = spawn(bin, ['install', 'chromium'], { shell: true })
+    const playwrightCli = _require.resolve('playwright/cli.js')
+    const proc = spawn(process.execPath, [playwrightCli, 'install', 'chromium'], {
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+      shell: false
+    })
 
     proc.stdout?.on('data', (d: Buffer) => onLog(d.toString()))
     proc.stderr?.on('data', (d: Buffer) => onLog(d.toString()))

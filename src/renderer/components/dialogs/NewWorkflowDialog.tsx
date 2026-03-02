@@ -2,18 +2,21 @@ import { useState } from 'react'
 import { useUiStore } from '../../stores/uiStore'
 import { ipc } from '../../services/ipc.service'
 import { Dialog } from './_Dialog'
+import { Input } from '../ui/Input'
 
 export function NewWorkflowDialog() {
   const { dialog, closeDialog } = useUiStore()
   const [name, setName] = useState('')
   const [url, setUrl] = useState('https://')
   const [recording, setRecording] = useState(false)
+  const [error, setError] = useState('')
 
   const handleRecord = async () => {
     const trimmedName = name.trim()
     const trimmedUrl = url.trim()
-    if (!trimmedName) { alert('Workflow 이름을 입력하세요.'); return }
-    if (!trimmedUrl || !trimmedUrl.startsWith('http')) { alert('올바른 URL을 입력하세요.'); return }
+    if (!trimmedName) { setError('Workflow 이름을 입력하세요.'); return }
+    if (!trimmedUrl || !trimmedUrl.startsWith('http')) { setError('올바른 URL을 입력하세요.'); return }
+    setError('')
 
     // dialog에 이름 저장 (useIpc에서 사용)
     useUiStore.setState((s) => ({
@@ -45,24 +48,23 @@ export function NewWorkflowDialog() {
         <div className="flex flex-col gap-2">
           <div>
             <label className="block text-[11px] text-[#aaa] mb-1">Workflow Name</label>
-            <input
+            <Input
               autoFocus
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); setError('') }}
               placeholder="e.g. Login Test"
-              className="w-full px-2 py-1.5 text-sm bg-[#3c3c3c] text-[#cccccc] border border-[#555] rounded outline-none focus:border-[#0e639c] caret-white"
             />
           </div>
           <div>
             <label className="block text-[11px] text-[#aaa] mb-1">Start URL</label>
-            <input
+            <Input
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => { setUrl(e.target.value); setError('') }}
               onKeyDown={(e) => e.key === 'Enter' && handleRecord()}
               placeholder="https://example.com"
-              className="w-full px-2 py-1.5 text-sm bg-[#3c3c3c] text-[#cccccc] border border-[#555] rounded outline-none focus:border-[#0e639c] caret-white"
             />
           </div>
+          {error && <p className="text-[11px] text-red-400">{error}</p>}
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3 py-2">

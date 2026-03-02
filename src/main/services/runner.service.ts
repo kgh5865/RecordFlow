@@ -1,5 +1,4 @@
 import type { BrowserWindow } from 'electron'
-import { spawn } from 'child_process'
 import { createRequire } from 'module'
 import type { WorkflowStep, RunnerResult } from '../../types/workflow.types'
 import { loadSettings } from './settings.service'
@@ -114,6 +113,9 @@ async function executeStep(page: Page, step: WorkflowStep): Promise<void> {
   }
 }
 
+// locator 표현식에 허용되지 않는 패턴 (코드 인젝션 방지)
+const LOCATOR_FORBIDDEN = [/\beval\b/, /\bFunction\b/, /\brequire\b/, /\bimport\b/, /\bprocess\b/, /\bglobal\b/, /;/, /\n/]
+
 // rawLine에서 locator 체인 부분을 추출하여 실행
 // e.g. "page.getByRole('button', { name: '...' }).click()" → page.getByRole(...)
 // e.g. "page.locator('a').filter({ hasText: '...' }).first().click()" → page.locator('a').filter(...).first()
@@ -124,7 +126,14 @@ function resolveFromRaw(page: Page, rawLine: string | undefined, actionPattern: 
   const actionIdx = rawLine.search(actionPattern)
   const locatorExpr = actionIdx > 0 ? rawLine.substring(0, actionIdx) : rawLine
 
-  // "page.getByRole('button', { name: '관리기능(통합)' })" → locator 체인 실행
+  // 허용 패턴 검증: page. 로 시작 + 금지 키워드 없음
+  if (!locatorExpr.trimStart().startsWith('page.')) {
+    throw new Error(`허용되지 않는 locator 표현식입니다. 워크플로우를 다시 녹화해주세요.`)
+  }
+  if (LOCATOR_FORBIDDEN.some((p) => p.test(locatorExpr))) {
+    throw new Error(`허용되지 않는 locator 표현식입니다. 워크플로우를 다시 녹화해주세요.`)
+  }
+
   const fn = new Function('page', `return ${locatorExpr}`)
   return fn(page) as Locator
 }
@@ -132,7 +141,6 @@ function resolveFromRaw(page: Page, rawLine: string | undefined, actionPattern: 
 
 // value 패턴 처리:
 //   {{otp:프로필명}}  → settings의 OTP 프로필 secret으로 TOTP 코드 생성
-//   {{cmd: 명령어}}   → 외부 스크립트 실행 후 stdout을 값으로 사용
 async function resolveValue(value: string): Promise<string> {
   // {{otp:name}} 패턴
   const otpMatch = value.match(/^\{\{otp:\s*(.+?)\s*\}\}$/)
@@ -145,21 +153,6 @@ async function resolveValue(value: string): Promise<string> {
     return generateSync!({ secret: profile.secret })
   }
 
-  // {{cmd: command}} 패턴
-  const cmdMatch = value.match(/^\{\{cmd:\s*(.+?)\s*\}\}$/)
-  if (!cmdMatch) return value
-
-  return new Promise((resolve, reject) => {
-    const proc = spawn(cmdMatch[1], { shell: true })
-    let stdout = ''
-    let stderr = ''
-    proc.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
-    proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString() })
-    proc.on('close', (code) => {
-      if (code !== 0) reject(new Error(`Command failed (exit ${code}): ${stderr.trim()}`))
-      else resolve(stdout.trim())
-    })
-    proc.on('error', reject)
-  })
+  return value
 }
 

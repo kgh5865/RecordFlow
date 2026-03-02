@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { AppLayout } from './components/layout/AppLayout'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { useWorkflowStore } from './stores/workflowStore'
 import { useScheduleStore } from './stores/scheduleStore'
 import { useSettingsStore } from './stores/settingsStore'
@@ -24,5 +25,9 @@ export default function App() {
     })
   }, [loadFromStorage, loadSchedules, loadSettings, applyRunEvent])
 
-  return <AppLayout />
+  return (
+    <ErrorBoundary>
+      <AppLayout />
+    </ErrorBoundary>
+  )
 }

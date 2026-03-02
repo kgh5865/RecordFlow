@@ -13,9 +13,8 @@
   },
   "dependencies": {
     "@playwright/test": "^1.49.0",
-    "chromium-bidi": "^15.0.0",
-    "playwright": "*",
-    "playwright-core": "*",
+    "playwright": "^1.49.0",
+    "playwright-core": "^1.49.0",
     "cron-parser": "^4.9.0",
     "jsqr": "^1.4.0",
     "node-cron": "^3.0.3",
