@@ -1,7 +1,7 @@
 import { spawn } from 'child_process'
 import type { ChildProcess } from 'child_process'
 import { tmpdir } from 'os'
-import { join } from 'path'
+import { join, dirname } from 'path'
 import { existsSync, unlinkSync } from 'fs'
 import { readFile } from 'fs/promises'
 import { createRequire } from 'module'
@@ -9,6 +9,13 @@ import type { BrowserWindow } from 'electron'
 import { parse } from './parser.service'
 
 const _require = createRequire(import.meta.url)
+
+/** playwright CLI 경로: exports에 cli.js가 없는 버전 대응 */
+function resolvePlaywrightCli(): string {
+  // package.json은 exports에 포함되어 있으므로 항상 resolve 가능
+  const pkgPath = _require.resolve('playwright/package.json')
+  return join(dirname(pkgPath), 'cli.js')
+}
 
 let proc: ChildProcess | null = null
 
@@ -34,7 +41,7 @@ export function startCodegen(win: BrowserWindow, url: string): void {
   }
 
   const tmpFile = join(tmpdir(), `recordflow-${crypto.randomUUID()}.ts`)
-  const playwrightCli = _require.resolve('playwright/cli.js')
+  const playwrightCli = resolvePlaywrightCli()
 
   proc = spawn(process.execPath, [playwrightCli, 'codegen', '--output', tmpFile, url], {
     env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PWDEBUG: '0' },
