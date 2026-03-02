@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { WorkflowExportFile } from '../../types/workflow.types'
 
 export type LeftTab = 'workflows' | 'schedules'
 
@@ -10,6 +11,12 @@ export type DialogState =
   | { type: 'rename-folder'; targetFolderId: string; currentName: string }
   | { type: 'rename-workflow'; targetWorkflowId: string; currentName: string }
   | { type: 'move-workflow'; targetWorkflowId: string }
+  | { type: 'import-workflow'; file: WorkflowExportFile }
+
+export interface ToastState {
+  message: string
+  variant: 'success' | 'error'
+}
 
 interface UiState {
   selectedWorkflowId: string | null
@@ -22,6 +29,11 @@ interface UiState {
   runningWorkflowId: string | null
   currentStepIndex: number | null
   lastRunResult: { success: boolean; error?: string; completedSteps: number } | null
+
+  // Toast
+  toast: ToastState | null
+  showToast: (message: string, variant: 'success' | 'error') => void
+  clearToast: () => void
 
   // 탭 + 설정 패널
   activeLeftTab: LeftTab
@@ -48,6 +60,13 @@ export const useUiStore = create<UiState>((set) => ({
   expandedFolderIds: [],
 
   dialog: { type: null },
+
+  toast: null,
+  showToast: (message, variant) => {
+    set({ toast: { message, variant } })
+    setTimeout(() => set({ toast: null }), 3000)
+  },
+  clearToast: () => set({ toast: null }),
 
   runningWorkflowId: null,
   currentStepIndex: null,

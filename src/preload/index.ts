@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { StorageData, WorkflowStep, RunnerResult, Schedule, ScheduleLog, AppSettings } from '../types/workflow.types'
+import type { StorageData, WorkflowStep, RunnerResult, Schedule, ScheduleLog, AppSettings, Workflow, WorkflowExportFile } from '../types/workflow.types'
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Storage
@@ -69,5 +69,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Scheduler push events
   onScheduleRunEvent: (cb: (log: ScheduleLog) => void): void => {
     ipcRenderer.on('schedule:run-event', (_event, log) => cb(log))
-  }
+  },
+
+  // Workflow File Sharing
+  exportWorkflow: (workflow: Workflow): Promise<{ cancelled: boolean }> =>
+    ipcRenderer.invoke('workflow:export', workflow),
+
+  importWorkflow: (): Promise<{ cancelled: boolean; file?: WorkflowExportFile; error?: string }> =>
+    ipcRenderer.invoke('workflow:import'),
 })

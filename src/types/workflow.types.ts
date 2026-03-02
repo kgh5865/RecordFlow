@@ -81,6 +81,28 @@ export interface AppSettings {
   otpProfiles: OtpProfile[]
 }
 
+// --- Workflow File Sharing 타입 ---
+
+export interface WorkflowStepExport {
+  order: number
+  action: ActionType
+  selector?: string
+  value?: string
+  url?: string
+  rawLine?: string
+  _masked?: true
+  _sensitiveType?: string
+}
+
+export interface WorkflowExportFile {
+  rfworkflowVersion: '1.0'
+  exportedAt: string
+  workflow: {
+    name: string
+    steps: WorkflowStepExport[]
+  }
+}
+
 // Renderer 측 window.electronAPI 타입
 export interface ElectronAPI {
   loadStorage: () => Promise<StorageData>
@@ -108,6 +130,10 @@ export interface ElectronAPI {
 
   // Scheduler push events
   onScheduleRunEvent: (cb: (log: ScheduleLog) => void) => void
+
+  // Workflow File Sharing
+  exportWorkflow: (workflow: Workflow) => Promise<{ cancelled: boolean }>
+  importWorkflow: () => Promise<{ cancelled: boolean; file?: WorkflowExportFile; error?: string }>
 }
 
 declare global {

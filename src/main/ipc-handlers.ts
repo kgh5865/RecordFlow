@@ -12,7 +12,8 @@ import {
   isValidCron,
   getScheduleLogs
 } from './services/scheduler.service'
-import type { StorageData, WorkflowStep, Schedule } from '../types/workflow.types'
+import { saveWorkflowToFile, loadWorkflowFromFile } from './services/workflow-file.service'
+import type { StorageData, WorkflowStep, Schedule, Workflow } from '../types/workflow.types'
 
 export function registerIpcHandlers(
   getMainWindow: () => BrowserWindow | null,
@@ -220,6 +221,26 @@ export function registerIpcHandlers(
       }
     } catch (err) {
       console.error('[IPC] settings:save error:', err)
+      throw err
+    }
+  })
+
+  // --- Workflow File Sharing IPC ---
+
+  ipcMain.handle('workflow:export', async (_event, workflow: Workflow) => {
+    try {
+      return await saveWorkflowToFile(workflow)
+    } catch (err) {
+      console.error('[IPC] workflow:export error:', err)
+      throw err
+    }
+  })
+
+  ipcMain.handle('workflow:import', async () => {
+    try {
+      return await loadWorkflowFromFile()
+    } catch (err) {
+      console.error('[IPC] workflow:import error:', err)
       throw err
     }
   })

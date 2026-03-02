@@ -89,6 +89,7 @@ import { NewFolderDialog } from '../dialogs/NewFolderDialog'
 import { NewWorkflowDialog } from '../dialogs/NewWorkflowDialog'
 import { MoveWorkflowDialog } from '../dialogs/MoveWorkflowDialog'
 import { RenameDialog } from '../dialogs/RenameDialog'
+import { ImportWorkflowDialog } from '../dialogs/ImportWorkflowDialog'
 
 function Dialogs() {
   const { dialog } = useUiStore()
@@ -98,5 +99,6 @@ function Dialogs() {
   if (dialog.type === 'new-workflow') return <NewWorkflowDialog />
   if (dialog.type === 'move-workflow') return <MoveWorkflowDialog />
   if (dialog.type === 'rename-folder' || dialog.type === 'rename-workflow') return <RenameDialog />
+  if (dialog.type === 'import-workflow') return <ImportWorkflowDialog />
   return null
 }

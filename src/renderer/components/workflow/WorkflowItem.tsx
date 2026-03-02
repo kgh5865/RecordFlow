@@ -27,7 +27,23 @@ export const WorkflowItem = memo(function WorkflowItem({ workflow }: WorkflowIte
     setMenu({ x: e.clientX, y: e.clientY })
   }
 
+  const handleExport = async () => {
+    const showToast = useUiStore.getState().showToast
+    try {
+      const result = await window.electronAPI.exportWorkflow(workflow)
+      if (!result.cancelled) {
+        showToast(`"${workflow.name}" 내보내기 완료`, 'success')
+      }
+    } catch {
+      showToast('내보내기에 실패했습니다.', 'error')
+    }
+  }
+
   const menuItems = [
+    {
+      label: 'Export',
+      onClick: handleExport
+    },
     {
       label: 'Rename',
       onClick: () =>

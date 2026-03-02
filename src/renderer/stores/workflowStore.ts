@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { WorkflowFolder, Workflow, WorkflowStep, StorageData } from '../../types/workflow.types'
+import type { WorkflowFolder, Workflow, WorkflowStep, StorageData, WorkflowExportFile } from '../../types/workflow.types'
 
 interface WorkflowState {
   folders: WorkflowFolder[]
@@ -33,6 +33,9 @@ interface WorkflowState {
   saveWorkflow: (workflowId: string) => Promise<void>
   discardWorkflow: (workflowId: string) => void
   isDirty: (workflowId: string) => boolean
+
+  // Workflow File Sharing
+  importWorkflow: (file: WorkflowExportFile, folderId: string) => void
 
   // Storage
   loadFromStorage: () => Promise<void>
@@ -245,6 +248,43 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   isDirty: (workflowId) => {
     return get().dirtyWorkflowIds.includes(workflowId)
+  },
+
+  importWorkflow: (file, folderId) => {
+    const { workflows } = get()
+    const sameFolderNames = workflows
+      .filter((w) => w.folderId === folderId)
+      .map((w) => w.name)
+
+    // 이름 중복 처리: "(2)", "(3)" 자동 추가
+    let resolvedName = file.workflow.name
+    let counter = 2
+    while (sameFolderNames.includes(resolvedName)) {
+      resolvedName = `${file.workflow.name} (${counter})`
+      counter++
+    }
+
+    const now = new Date().toISOString()
+    const steps: WorkflowStep[] = file.workflow.steps.map((s, i) => ({
+      id: crypto.randomUUID(),
+      order: i,
+      action: s.action,
+      ...(s.selector !== undefined ? { selector: s.selector } : {}),
+      ...(s.value !== undefined ? { value: s.value } : {}),
+      ...(s.url !== undefined ? { url: s.url } : {}),
+      ...(s.rawLine !== undefined ? { rawLine: s.rawLine } : {}),
+    }))
+
+    const workflow: Workflow = {
+      id: crypto.randomUUID(),
+      name: resolvedName,
+      folderId,
+      createdAt: now,
+      updatedAt: now,
+      steps,
+    }
+    set((s) => ({ workflows: [...s.workflows, workflow] }))
+    get().persistToStorage()
   },
 
   loadFromStorage: async () => {
