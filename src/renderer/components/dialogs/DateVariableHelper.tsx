@@ -9,7 +9,9 @@ const FORMAT_PRESETS = [
   { label: 'M/D', value: 'M/D' },
   { label: 'YYYY.MM.DD', value: 'YYYY.MM.DD' },
   { label: 'MM/DD', value: 'MM/DD' },
-  { label: 'MM-DD', value: 'MM-DD' }
+  { label: 'MM-DD', value: 'MM-DD' },
+  { label: 'M (월만)', value: 'M' },
+  { label: 'D (일만)', value: 'D' }
 ]
 
 function formatDatePreview(offset: number, format: string): string {
