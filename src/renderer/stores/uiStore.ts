@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { WorkflowExportFile } from '../../types/workflow.types'
+import type { WorkflowExportFile, WorkflowStep } from '../../types/workflow.types'
 
 export type LeftTab = 'workflows' | 'schedules'
 
@@ -12,6 +12,7 @@ export type DialogState =
   | { type: 'rename-workflow'; targetWorkflowId: string; currentName: string }
   | { type: 'move-workflow'; targetWorkflowId: string }
   | { type: 'import-workflow'; file: WorkflowExportFile }
+  | { type: 'edit-value'; workflowId: string; stepId: string; step: WorkflowStep }
 
 export interface ToastState {
   message: string

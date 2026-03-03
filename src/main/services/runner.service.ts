@@ -139,10 +139,24 @@ function resolveFromRaw(page: Page, rawLine: string | undefined, actionPattern: 
 }
 
 
+// 날짜 포맷 헬퍼: YYYY, MM, DD, M, D 토큰을 치환
+function formatDate(date: Date, format: string): string {
+  const y = date.getFullYear()
+  const m = date.getMonth() + 1
+  const d = date.getDate()
+  return format
+    .replace('YYYY', String(y))
+    .replace('MM', String(m).padStart(2, '0'))
+    .replace('DD', String(d).padStart(2, '0'))
+    .replace('M', String(m))
+    .replace('D', String(d))
+}
+
 // value 패턴 처리:
-//   {{otp:프로필명}}  → settings의 OTP 프로필 secret으로 TOTP 코드 생성
+//   {{otp:프로필명}}              → OTP 프로필 secret으로 TOTP 코드 생성 (전체 값 매칭)
+//   {{date:오프셋}} 또는 {{date:오프셋:포맷}} → 날짜 치환 (인라인, 텍스트와 혼합 가능)
 async function resolveValue(value: string): Promise<string> {
-  // {{otp:name}} 패턴
+  // {{otp:name}} 패턴 — 전체 값 매칭만 지원
   const otpMatch = value.match(/^\{\{otp:\s*(.+?)\s*\}\}$/)
   if (otpMatch) {
     const profileName = otpMatch[1]
@@ -153,6 +167,18 @@ async function resolveValue(value: string): Promise<string> {
     return generateSync!({ secret: profile.secret })
   }
 
-  return value
+  // {{date:offset}} 또는 {{date:offset:format}} 패턴 — 인라인 치환
+  const resolved = value.replace(
+    /\{\{date:([+-]?\d+)(?::([^}]+))?\}\}/g,
+    (_match, offsetStr, formatStr) => {
+      const offset = parseInt(offsetStr, 10)
+      const fmt = formatStr || 'YYYY-MM-DD'
+      const d = new Date()
+      d.setDate(d.getDate() + offset)
+      return formatDate(d, fmt)
+    }
+  )
+
+  return resolved
 }
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { ActionBadge } from './ActionBadge'
-import { useSettingsStore } from '../../stores/settingsStore'
+import { useUiStore } from '../../stores/uiStore'
 import type { WorkflowStep } from '../../../types/workflow.types'
 
 function parseOtp(value: string) {
@@ -75,128 +75,36 @@ function SelectorEditor({ step, onEditSelector }: SelectorEditorProps) {
 interface ValueEditorProps {
   step: WorkflowStep
   canEditValue: boolean
-  onEditValue: (newValue: string) => void
+  workflowId: string
 }
 
-function ValueEditor({ step, canEditValue, onEditValue }: ValueEditorProps) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(step.value ?? '')
-  const [otpOpen, setOtpOpen] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const otpProfiles = useSettingsStore((s) => s.settings.otpProfiles)
+function ValueEditor({ step, canEditValue, workflowId }: ValueEditorProps) {
+  const openDialog = useUiStore((s) => s.openDialog)
 
-  const displayOtpMatch = parseOtp(step.value ?? '')
-  const draftOtpMatch = parseOtp(draft)
-
-  useEffect(() => {
-    if (editing && !draftOtpMatch) inputRef.current?.focus()
-  }, [editing])
-
-  const startEdit = () => {
+  const handleClick = () => {
     if (!canEditValue) return
-    setDraft(step.value ?? '')
-    setEditing(true)
-    setOtpOpen(false)
+    openDialog({ type: 'edit-value', workflowId, stepId: step.id, step })
   }
 
-  const commitEdit = () => {
-    setEditing(false)
-    setOtpOpen(false)
-    if (draft !== step.value) onEditValue(draft)
-  }
-
-  const cancelEdit = () => {
-    setEditing(false)
-    setOtpOpen(false)
-    setDraft(step.value ?? '')
-  }
-
-  const insertOtp = (profileName: string) => {
-    const token = `{{otp:${profileName}}}`
-    setDraft(token)
-    setOtpOpen(false)
-    onEditValue(token)
-    setEditing(false)
-  }
-
-  if (canEditValue && editing) {
-    return (
-      <div className="relative flex items-center gap-0.5 shrink-0">
-        {draftOtpMatch ? (
-          <div className="flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f3f] border border-[#007acc]/60 rounded">
-            <span className="text-[10px] text-[#4fc3f7]">🔑</span>
-            <span className="text-[10px] text-[#4fc3f7] font-medium">{draftOtpMatch[1]}</span>
-            <button
-              data-otp-menu
-              onMouseDown={(e) => { e.preventDefault(); setDraft(''); setTimeout(() => inputRef.current?.focus(), 0) }}
-              className="text-[#555] hover:text-red-400 text-[10px] ml-0.5 transition-colors"
-              title="OTP 제거"
-            >
-              ✕
-            </button>
-          </div>
-        ) : (
-          <input
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitEdit()
-              if (e.key === 'Escape') cancelEdit()
-            }}
-            onBlur={(e) => {
-              if ((e.relatedTarget as HTMLElement)?.closest('[data-otp-menu]')) return
-              commitEdit()
-            }}
-            className="w-[120px] px-1.5 py-0.5 text-[11px] font-mono bg-[#3c3c3c] text-[#ce9178] border border-[#007acc] rounded outline-none caret-white"
-          />
-        )}
-        {otpProfiles.length > 0 && (
-          <div className="relative">
-            <button
-              data-otp-menu
-              onMouseDown={(e) => { e.preventDefault(); setOtpOpen((o) => !o) }}
-              className="px-1 py-0.5 text-[10px] text-[#4fc3f7]/70 hover:text-[#4fc3f7] border border-[#007acc]/30 rounded hover:border-[#007acc] transition-colors"
-              title="OTP 프로필 선택"
-            >
-              🔑▾
-            </button>
-            {otpOpen && (
-              <div
-                data-otp-menu
-                className="absolute right-0 top-full mt-1 z-50 bg-[#252526] border border-[#3c3c3c] rounded shadow-lg min-w-[140px]"
-              >
-                <div className="px-3 py-1.5 text-[10px] text-[#555] border-b border-[#3c3c3c]">OTP 프로필</div>
-                {otpProfiles.map((p) => (
-                  <button
-                    key={p.id}
-                    data-otp-menu
-                    onMouseDown={(e) => { e.preventDefault(); insertOtp(p.name) }}
-                    className="w-full text-left px-3 py-1.5 text-[11px] text-[#cccccc] hover:bg-[#094771] transition-colors flex items-center gap-1.5"
-                  >
-                    <span className="text-[#4fc3f7] text-[10px]">🔑</span>
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
+  const otpMatch = parseOtp(step.value ?? '')
+  const hasDateVars = step.value ? /\{\{date:[^}]+\}\}/.test(step.value) : false
 
   if (canEditValue) {
     return (
-      <span onClick={startEdit} className="shrink-0 cursor-pointer" title="클릭하여 편집">
-        {displayOtpMatch ? (
+      <span onClick={handleClick} className="shrink-0 cursor-pointer" title="클릭하여 편집">
+        {otpMatch ? (
           <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f3f] border border-[#007acc]/50 text-[#4fc3f7] text-[10px] rounded hover:border-[#007acc] transition-colors">
-            <span>🔑</span>
-            <span className="font-medium">{displayOtpMatch[1]}</span>
+            <span>&#x1F511;</span>
+            <span className="font-medium">{otpMatch[1]}</span>
+          </span>
+        ) : hasDateVars ? (
+          <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f2a] border border-[#4ec9b0]/50 text-[#4ec9b0] text-[10px] rounded hover:border-[#4ec9b0] transition-colors">
+            <span>&#x1F4C5;</span>
+            <span className="font-medium truncate max-w-[100px]">{step.value}</span>
           </span>
         ) : step.value ? (
           <span className="text-[11px] text-[#ce9178] truncate max-w-[100px] hover:underline hover:text-[#e8b390] transition-colors">
-            "{step.value}"
+            &quot;{step.value}&quot;
           </span>
         ) : (
           <span className="text-[11px] text-[#555] italic">값 없음</span>
@@ -208,7 +116,7 @@ function ValueEditor({ step, canEditValue, onEditValue }: ValueEditorProps) {
   if (step.value) {
     return (
       <span className="text-[11px] text-[#ce9178] truncate max-w-[100px]" title={step.value}>
-        "{step.value}"
+        &quot;{step.value}&quot;
       </span>
     )
   }
@@ -220,17 +128,17 @@ function ValueEditor({ step, canEditValue, onEditValue }: ValueEditorProps) {
 
 interface Props {
   step: WorkflowStep
+  workflowId: string
   isActive: boolean
   isFirst: boolean
   isLast: boolean
   onMoveUp: () => void
   onMoveDown: () => void
   onDelete: () => void
-  onEditValue: (newValue: string) => void
   onEditSelector: (newValue: string) => void
 }
 
-export function StepRow({ step, isActive, isFirst, isLast, onMoveUp, onMoveDown, onDelete, onEditValue, onEditSelector }: Props) {
+export function StepRow({ step, workflowId, isActive, isFirst, isLast, onMoveUp, onMoveDown, onDelete, onEditSelector }: Props) {
   const canEditValue = step.action === 'fill' || step.action === 'select'
 
   return (
@@ -242,7 +150,7 @@ export function StepRow({ step, isActive, isFirst, isLast, onMoveUp, onMoveDown,
       <span className="text-[10px] text-[#555] w-5 text-right shrink-0">{step.order + 1}</span>
       <ActionBadge action={step.action} />
       <SelectorEditor step={step} onEditSelector={onEditSelector} />
-      <ValueEditor step={step} canEditValue={canEditValue} onEditValue={onEditValue} />
+      <ValueEditor step={step} canEditValue={canEditValue} workflowId={workflowId} />
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <button
           onClick={onMoveUp}

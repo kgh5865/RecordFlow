@@ -30,13 +30,13 @@ export function StepList({ workflow }: Props) {
             <StepRow
               key={step.id}
               step={step}
+              workflowId={workflow.id}
               isActive={isThisRunning && currentStepIndex === i}
               isFirst={i === 0}
               isLast={i === workflow.steps.length - 1}
               onMoveUp={() => moveStepUp(workflow.id, step.id)}
               onMoveDown={() => moveStepDown(workflow.id, step.id)}
               onDelete={() => deleteStep(workflow.id, step.id)}
-              onEditValue={(val) => updateStep(workflow.id, step.id, { value: val })}
               onEditSelector={(val) => {
                 const normalized = normalizeSelector(val)
                 if (step.action === 'navigate' || (step.action === 'expect' && step.url)) {
@@ -91,14 +91,21 @@ export function StepList({ workflow }: Props) {
                 </div>
                 <div>
                   <div className="text-[#4fc3f7] font-medium mb-0.5">Value 편집</div>
-                  <div>주황색 값 텍스트를 클릭하면 편집할 수 있습니다.</div>
+                  <div>주황색 값 텍스트를 클릭하면 편집 다이얼로그가 열립니다.</div>
                 </div>
                 <div>
                   <div className="text-[#4fc3f7] font-medium mb-0.5">OTP 자동 입력</div>
                   <div className="space-y-0.5 ml-1">
-                    <div>fill/select 값 편집 중 <span className="text-[#4fc3f7]">🔑▾</span> 버튼으로 OTP 프로필 선택</div>
+                    <div>편집 다이얼로그에서 OTP 프로필을 선택하세요.</div>
                     <div>실행 시 TOTP 코드를 자동 생성하여 입력합니다.</div>
-                    <div>설정에서 OTP 프로필(이름 + Secret Key)을 먼저 등록하세요.</div>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[#4ec9b0] font-medium mb-0.5">날짜 변수</div>
+                  <div className="space-y-0.5 ml-1">
+                    <div>편집 다이얼로그에서 날짜 변수를 삽입할 수 있습니다.</div>
+                    <div><code className="text-[#ce9178]">{'{{date:0}}'}</code> 오늘, <code className="text-[#ce9178]">{'{{date:+3:M/D}}'}</code> 3일 후</div>
+                    <div>실행 시 실제 날짜로 자동 치환됩니다.</div>
                   </div>
                 </div>
                 <div className="border-t border-[#3c3c3c] pt-1.5">
