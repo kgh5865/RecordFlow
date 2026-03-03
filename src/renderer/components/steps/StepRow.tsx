@@ -78,6 +78,12 @@ interface ValueEditorProps {
   workflowId: string
 }
 
+const DISPLAY_MAX = 28
+
+function truncateValue(v: string): string {
+  return v.length > DISPLAY_MAX ? v.slice(0, DISPLAY_MAX) + '…' : v
+}
+
 function ValueEditor({ step, canEditValue, workflowId }: ValueEditorProps) {
   const openDialog = useUiStore((s) => s.openDialog)
 
@@ -91,7 +97,11 @@ function ValueEditor({ step, canEditValue, workflowId }: ValueEditorProps) {
 
   if (canEditValue) {
     return (
-      <span onClick={handleClick} className="shrink-0 cursor-pointer" title="클릭하여 편집">
+      <span
+        onClick={handleClick}
+        className="shrink-0 max-w-[140px] min-w-0 overflow-hidden cursor-pointer"
+        title={`${step.value ?? ''}\n(클릭하여 편집)`}
+      >
         {otpMatch ? (
           <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f3f] border border-[#007acc]/50 text-[#4fc3f7] text-[10px] rounded hover:border-[#007acc] transition-colors">
             <span>&#x1F511;</span>
@@ -100,11 +110,11 @@ function ValueEditor({ step, canEditValue, workflowId }: ValueEditorProps) {
         ) : hasDateVars ? (
           <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f2a] border border-[#4ec9b0]/50 text-[#4ec9b0] text-[10px] rounded hover:border-[#4ec9b0] transition-colors">
             <span>&#x1F4C5;</span>
-            <span className="font-medium truncate max-w-[100px]">{step.value}</span>
+            <span className="font-medium">{truncateValue(step.value ?? '')}</span>
           </span>
         ) : step.value ? (
-          <span className="text-[11px] text-[#ce9178] truncate max-w-[100px] hover:underline hover:text-[#e8b390] transition-colors">
-            &quot;{step.value}&quot;
+          <span className="text-[11px] text-[#ce9178] hover:underline hover:text-[#e8b390] transition-colors">
+            &quot;{truncateValue(step.value)}&quot;
           </span>
         ) : (
           <span className="text-[11px] text-[#555] italic">값 없음</span>
@@ -115,8 +125,8 @@ function ValueEditor({ step, canEditValue, workflowId }: ValueEditorProps) {
 
   if (step.value) {
     return (
-      <span className="text-[11px] text-[#ce9178] truncate max-w-[100px]" title={step.value}>
-        &quot;{step.value}&quot;
+      <span className="text-[11px] text-[#ce9178] shrink-0 max-w-[140px] overflow-hidden" title={step.value}>
+        &quot;{truncateValue(step.value)}&quot;
       </span>
     )
   }
