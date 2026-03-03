@@ -1,10 +1,10 @@
-import { app, BrowserWindow, shell, Tray, Menu, nativeImage, dialog } from 'electron'
+import { app, BrowserWindow, shell, Tray, Menu, nativeImage, dialog, safeStorage } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
-import { loadStorage } from './services/storage.service'
+import { loadStorage, saveStorage } from './services/storage.service'
 import { stopCodegen } from './services/codegen.service'
 import { isChromiumInstalled, installChromium } from './services/setup.service'
-import { loadSettings } from './services/settings.service'
+import { loadSettings, saveSettings } from './services/settings.service'
 import {
   initScheduler,
   stopAllSchedules,
@@ -162,6 +162,14 @@ app.whenReady().then(async () => {
 
   // 스케줄러 초기화: 저장된 활성 스케줄 등록
   const storage = loadStorage()
+
+  // 평문 → 암호화 자동 마이그레이션 (safeStorage 사용 가능 시)
+  if (safeStorage.isEncryptionAvailable()) {
+    await saveStorage(storage)
+    await saveSettings(settings)
+  } else {
+    console.warn('[Security] safeStorage 암호화를 사용할 수 없습니다. 데이터가 평문으로 저장됩니다.')
+  }
   if (mainWindow) {
     initScheduler(mainWindow, storage.schedules)
   }

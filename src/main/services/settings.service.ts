@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { join } from 'path'
 import type { AppSettings } from '../../types/workflow.types'
-import { loadJSONSync, saveJSONAsync } from '../utils/json-storage'
+import { loadSecureSync, saveSecureAsync } from '../utils/secure-storage'
 
 const SETTINGS_FILE = join(app.getPath('userData'), 'settings.json')
 
@@ -11,9 +11,9 @@ const DEFAULT_SETTINGS: AppSettings = {
 }
 
 export function loadSettings(): AppSettings {
-  return loadJSONSync<AppSettings>(SETTINGS_FILE, DEFAULT_SETTINGS)
+  return loadSecureSync<AppSettings>(SETTINGS_FILE, DEFAULT_SETTINGS)
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
-  await saveJSONAsync(SETTINGS_FILE, settings)
+  await saveSecureAsync(SETTINGS_FILE, settings)
 }
