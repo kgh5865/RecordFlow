@@ -1,24 +1,12 @@
 import { useEffect } from 'react'
-import { useWorkflowStore } from '../../stores/workflowStore'
 import { useUiStore } from '../../stores/uiStore'
 import { useScheduleStore } from '../../stores/scheduleStore'
 
 export function Toolbar() {
-  const workflows = useWorkflowStore((s) => s.workflows)
-  const { selectedWorkflowId, settingsPanelOpen, setSettingsPanelOpen, openDialog, showToast, toast, clearToast } = useUiStore()
+  const { settingsPanelOpen, setSettingsPanelOpen, openDialog, showToast, toast, clearToast } = useUiStore()
   const schedules = useScheduleStore((s) => s.schedules)
 
-  const selectedWorkflow = workflows.find((w) => w.id === selectedWorkflowId)
   const activeScheduleCount = schedules.filter((s) => s.enabled).length
-
-  const handleRecord = () => {
-    if (!selectedWorkflow) return
-    openDialog({
-      type: 'new-workflow',
-      targetFolderId: selectedWorkflow.folderId,
-      currentName: selectedWorkflow.name
-    })
-  }
 
   const handleImport = async () => {
     try {
@@ -58,14 +46,6 @@ export function Toolbar() {
             title="워크플로우 파일 가져오기 (.rfworkflow)"
           >
             ↑ Import
-          </button>
-
-          <button
-            onClick={handleRecord}
-            disabled={!selectedWorkflowId}
-            className="px-3 py-1 text-xs rounded bg-[#0e639c] hover:bg-[#1177bb] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            ● Record
           </button>
 
           <button

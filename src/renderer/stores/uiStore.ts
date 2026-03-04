@@ -13,6 +13,7 @@ export type DialogState =
   | { type: 'move-workflow'; targetWorkflowId: string }
   | { type: 'import-workflow'; file: WorkflowExportFile }
   | { type: 'edit-value'; workflowId: string; stepId: string; step: WorkflowStep }
+  | { type: 're-record'; targetWorkflowId: string; workflowName: string }
 
 export interface ToastState {
   message: string

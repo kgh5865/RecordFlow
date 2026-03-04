@@ -4,9 +4,10 @@ import { useUiStore } from '../../stores/uiStore'
 import { ipc } from '../../services/ipc.service'
 import { StepList } from '../steps/StepList'
 import { ConfirmDialog } from '../dialogs/ConfirmDialog'
+import { ReRecordDialog } from '../dialogs/ReRecordDialog'
 
 export function StepPanel() {
-  const { selectedWorkflowId, runningWorkflowId, setRunning } = useUiStore()
+  const { selectedWorkflowId, runningWorkflowId, setRunning, dialog, openDialog } = useUiStore()
   const workflows = useWorkflowStore((s) => s.workflows)
   const deleteWorkflow = useWorkflowStore((s) => s.deleteWorkflow)
   const dirtyWorkflowIds = useWorkflowStore((s) => s.dirtyWorkflowIds)
@@ -112,6 +113,14 @@ export function StepPanel() {
             </button>
           )}
           <button
+            onClick={() => openDialog({ type: 're-record', targetWorkflowId: workflow.id, workflowName: workflow.name })}
+            disabled={isRunning || isDirty}
+            className="px-3 py-0.5 text-xs rounded bg-[#0e639c] hover:bg-[#1177bb] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title={isDirty ? '재녹화하려면 먼저 저장하세요' : '스텝을 새로 녹화합니다'}
+          >
+            ● Re-record
+          </button>
+          <button
             onClick={() => setPendingDelete(true)}
             disabled={isRunning}
             className="px-3 py-0.5 text-xs rounded bg-red-600 hover:bg-red-500 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -133,6 +142,8 @@ export function StepPanel() {
           onClose={() => setPendingDelete(false)}
         />
       )}
+
+      {dialog.type === 're-record' && <ReRecordDialog />}
     </div>
   )
 }

@@ -12,12 +12,28 @@ export function useIpc(): void {
   const { dialog, closeDialog, setRunning, setRunResult, selectedWorkflowId } = useUiStore()
 
   useEffect(() => {
-    // codegen 완료 → workflow 생성
+    // codegen 완료 → workflow 생성 또는 재녹화
     window.electronAPI.onCodegenComplete((steps: WorkflowStep[]) => {
       if (dialog.type === 'new-workflow' && dialog.targetFolderId) {
         const name = dialog.currentName ?? 'New Workflow'
         const workflow = createWorkflow(name, dialog.targetFolderId, steps)
         useUiStore.getState().selectWorkflow(workflow.id)
+        closeDialog()
+      } else if (dialog.type === 're-record' && dialog.targetWorkflowId) {
+        // 재녹화 완료: 기존 워크플로우의 스텝을 새 녹화 결과로 교체
+        const store = useWorkflowStore.getState()
+        const target = store.workflows.find((w) => w.id === dialog.targetWorkflowId)
+        if (target) {
+          const reorderedSteps = steps.map((s, i) => ({ ...s, order: i }))
+          useWorkflowStore.setState((state) => ({
+            workflows: state.workflows.map((w) =>
+              w.id === dialog.targetWorkflowId
+                ? { ...w, steps: reorderedSteps, updatedAt: new Date().toISOString() }
+                : w
+            )
+          }))
+          store.persistToStorage()
+        }
         closeDialog()
       }
     })
