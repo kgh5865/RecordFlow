@@ -14,11 +14,14 @@ type Locator = import('playwright').Locator
 
 // otplib v13: ESM-only, Rollup 번들링 우회를 위해 new Function 사용
 const _import = new Function('specifier', 'return import(specifier)') as (s: string) => Promise<any>
-let _generateSync: ((opts: { secret: string }) => string) | null = null
+let _generateSync: ((opts: { secret: string; guardrails: object }) => string) | null = null
+let _guardrails: object | null = null
 async function loadOtplib() {
   if (_generateSync) return _generateSync
-  const mod = await _import('otplib')
+  const [mod, core] = await Promise.all([_import('otplib'), _import('@otplib/core')])
   _generateSync = mod.generateSync
+  // 일부 서비스가 10바이트(80비트) secret을 발급하므로 최소 제한을 1바이트로 완화
+  _guardrails = core.createGuardrails({ MIN_SECRET_BYTES: 1 })
   return _generateSync
 }
 
@@ -164,7 +167,7 @@ async function resolveValue(value: string): Promise<string> {
     const profile = settings.otpProfiles.find((p) => p.name === profileName)
     if (!profile) throw new Error(`OTP 프로필 "${profileName}"을 찾을 수 없습니다. 설정에서 추가하세요.`)
     const generateSync = await loadOtplib()
-    return generateSync!({ secret: profile.secret })
+    return generateSync!({ secret: profile.secret, guardrails: _guardrails! })
   }
 
   // {{date:offset}} 또는 {{date:offset:format}} 패턴 — 인라인 치환
