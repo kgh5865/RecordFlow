@@ -110,8 +110,8 @@ export function RunResultToast() {
 
   if (!lastRunResult) return null
 
-  const { success, completedSteps, error } = lastRunResult
-  const workflow = workflows.find((w) => w.id === selectedWorkflowId)
+  const { success, completedSteps, error, workflowId } = lastRunResult
+  const workflow = workflows.find((w) => w.id === (workflowId ?? selectedWorkflowId))
   const totalSteps = workflow?.steps.length ?? completedSteps
   const failedStep = !success && workflow ? workflow.steps[completedSteps] : null
 

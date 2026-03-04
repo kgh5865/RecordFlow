@@ -106,7 +106,7 @@ async function executeSchedule(scheduleId: string): Promise<void> {
   const startedAt = new Date().toISOString()
 
   try {
-    const result = await runWorkflow(mainWin, workflow.steps, { headless: true })
+    const result = await runWorkflow(null, workflow.steps, { headless: true })
     const finishedAt = new Date().toISOString()
 
     const log: ScheduleLog = {
@@ -173,4 +173,50 @@ async function saveScheduleLog(log: ScheduleLog): Promise<void> {
 export async function getScheduleLogs(scheduleId: string, limit = 20): Promise<ScheduleLog[]> {
   const logs = await loadLogs()
   return logs.filter((l) => l.scheduleId === scheduleId).slice(0, limit)
+}
+
+export async function runScheduleNow(scheduleId: string): Promise<ScheduleLog | null> {
+  if (runningSet.has(scheduleId)) return null
+
+  const storage = loadStorage()
+  const schedule = storage.schedules.find((s) => s.id === scheduleId)
+  if (!schedule) return null
+
+  const workflow = storage.workflows.find((w) => w.id === schedule.workflowId)
+  if (!workflow || workflow.steps.length === 0) return null
+
+  runningSet.add(scheduleId)
+  const startedAt = new Date().toISOString()
+
+  try {
+    const result = await runWorkflow(null, workflow.steps, { headless: true })
+    const finishedAt = new Date().toISOString()
+
+    const log: ScheduleLog = {
+      id: randomUUID(),
+      scheduleId,
+      workflowId: workflow.id,
+      workflowName: workflow.name,
+      startedAt,
+      finishedAt,
+      success: result.success,
+      completedSteps: result.completedSteps,
+      totalSteps: workflow.steps.length,
+      error: result.error
+    }
+
+    await saveScheduleLog(log)
+
+    // Notify renderer
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send('schedule:run-event', log)
+    }
+
+    return log
+  } catch (err) {
+    console.error('[Scheduler] runScheduleNow error for schedule', scheduleId, err)
+    return null
+  } finally {
+    runningSet.delete(scheduleId)
+  }
 }

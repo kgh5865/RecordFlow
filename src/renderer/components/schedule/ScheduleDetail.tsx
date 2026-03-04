@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useScheduleStore } from '../../stores/scheduleStore'
 import { useWorkflowStore } from '../../stores/workflowStore'
+import { useUiStore } from '../../stores/uiStore'
 import { StepList } from '../steps/StepList'
+import { ScheduleDialog } from './ScheduleDialog'
 import type { ScheduleLog } from '../../../types/workflow.types'
 
 function LogRow({ log }: { log: ScheduleLog }) {
@@ -32,10 +34,12 @@ function LogRow({ log }: { log: ScheduleLog }) {
 }
 
 export function ScheduleDetail() {
-  const { schedules, selectedScheduleId, logs } = useScheduleStore()
+  const { schedules, selectedScheduleId, logs, toggleSchedule } = useScheduleStore()
   const workflows = useWorkflowStore((s) => s.workflows)
   const [runningNow, setRunningNow] = useState(false)
   const [runError, setRunError] = useState('')
+  const [toggling, setToggling] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
 
   const schedule = schedules.find((s) => s.id === selectedScheduleId)
 
@@ -58,7 +62,16 @@ export function ScheduleDetail() {
     setRunError('')
     setRunningNow(true)
     try {
-      await window.electronAPI.startRunner(workflow.steps)
+      const log = await window.electronAPI.runScheduleNow(schedule.id)
+      if (log && !log.success) {
+        // 실패 시에만 결과 모달 표시
+        useUiStore.getState().setRunResult({
+          success: false,
+          error: log.error,
+          completedSteps: log.completedSteps,
+          workflowId: log.workflowId
+        })
+      }
     } finally {
       setRunningNow(false)
     }
@@ -94,15 +107,32 @@ export function ScheduleDetail() {
               )}
             </div>
           )}
-          <span
-            className={`text-[10px] px-2 py-0.5 rounded ${
+          <button
+            onClick={() => setEditDialogOpen(true)}
+            className="text-[10px] px-2 py-0.5 rounded bg-[#3c3c3c] text-[#cccccc] hover:bg-[#505050] transition-colors"
+            title="스케줄 수정"
+          >
+            수정
+          </button>
+          <button
+            onClick={async () => {
+              setToggling(true)
+              try {
+                await toggleSchedule(schedule.id, !schedule.enabled)
+              } finally {
+                setToggling(false)
+              }
+            }}
+            disabled={toggling}
+            className={`text-[10px] px-2 py-0.5 rounded cursor-pointer transition-colors disabled:opacity-50 ${
               schedule.enabled
-                ? 'bg-[#1a3a1a] text-[#4caf50]'
-                : 'bg-[#2a2a2a] text-[#666]'
+                ? 'bg-[#1a3a1a] text-[#4caf50] hover:bg-[#1a4a1a]'
+                : 'bg-[#2a2a2a] text-[#666] hover:bg-[#3a3a3a] hover:text-[#999]'
             }`}
+            title={schedule.enabled ? '비활성화하려면 클릭' : '활성화하려면 클릭'}
           >
             {schedule.enabled ? '활성' : '비활성'}
-          </span>
+          </button>
         </div>
       </div>
 
@@ -133,6 +163,10 @@ export function ScheduleDetail() {
           )}
         </div>
       </div>
+
+      {editDialogOpen && (
+        <ScheduleDialog schedule={schedule} onClose={() => setEditDialogOpen(false)} />
+      )}
     </div>
   )
 }

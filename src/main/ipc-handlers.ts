@@ -10,7 +10,8 @@ import {
   unregisterSchedule,
   calcNextRunAt,
   isValidCron,
-  getScheduleLogs
+  getScheduleLogs,
+  runScheduleNow
 } from './services/scheduler.service'
 import { saveWorkflowToFile, loadWorkflowFromFile } from './services/workflow-file.service'
 import type { StorageData, WorkflowStep, Schedule, Workflow } from '../types/workflow.types'
@@ -187,6 +188,16 @@ export function registerIpcHandlers(
       return await getScheduleLogs(scheduleId, limit)
     } catch (err) {
       console.error('[IPC] schedule:logs error:', err)
+      throw err
+    }
+  })
+
+  ipcMain.handle('schedule:run-now', async (_event, scheduleId: string) => {
+    try {
+      if (typeof scheduleId !== 'string' || !scheduleId) throw new Error('Invalid scheduleId parameter')
+      return await runScheduleNow(scheduleId)
+    } catch (err) {
+      console.error('[IPC] schedule:run-now error:', err)
       throw err
     }
   })

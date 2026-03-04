@@ -59,6 +59,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getScheduleLogs: (scheduleId: string, limit?: number): Promise<ScheduleLog[]> =>
     ipcRenderer.invoke('schedule:logs', scheduleId, limit),
 
+  runScheduleNow: (scheduleId: string): Promise<ScheduleLog | null> =>
+    ipcRenderer.invoke('schedule:run-now', scheduleId),
+
   // Settings
   getSettings: (): Promise<AppSettings> =>
     ipcRenderer.invoke('settings:get'),

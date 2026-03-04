@@ -123,6 +123,7 @@ export interface ElectronAPI {
   deleteSchedule: (id: string) => Promise<void>
   toggleSchedule: (id: string, enabled: boolean) => Promise<Schedule>
   getScheduleLogs: (scheduleId: string, limit?: number) => Promise<ScheduleLog[]>
+  runScheduleNow: (scheduleId: string) => Promise<ScheduleLog | null>
 
   // Settings
   getSettings: () => Promise<AppSettings>

@@ -30,7 +30,7 @@ interface UiState {
   // Runner 상태
   runningWorkflowId: string | null
   currentStepIndex: number | null
-  lastRunResult: { success: boolean; error?: string; completedSteps: number } | null
+  lastRunResult: { success: boolean; error?: string; completedSteps: number; workflowId?: string } | null
 
   // Toast
   toast: ToastState | null

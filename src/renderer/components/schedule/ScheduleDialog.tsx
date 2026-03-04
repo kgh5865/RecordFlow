@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { useScheduleStore } from '../../stores/scheduleStore'
 import { useWorkflowStore } from '../../stores/workflowStore'
 import { Input } from '../ui/Input'
-import type { ScheduleType } from '../../../types/workflow.types'
+import type { Schedule, ScheduleType } from '../../../types/workflow.types'
 
 interface Props {
   onClose: () => void
+  /** 수정 모드: 기존 스케줄 전달 시 편집 UI */
+  schedule?: Schedule
 }
 
 const CRON_PRESETS = [
@@ -21,7 +23,6 @@ const CRON_PRESETS = [
 function calcNextRunLabel(cron: string): string {
   if (!cron || cron === '__custom__') return ''
   try {
-    // Simple client-side next run estimation (rough)
     const preset = CRON_PRESETS.find((p) => p.value === cron)
     if (preset && preset.value !== '__custom__') return `프리셋: ${preset.label}`
     return `cron: ${cron}`
@@ -30,16 +31,34 @@ function calcNextRunLabel(cron: string): string {
   }
 }
 
+function resolveInitialPreset(cronExpression?: string): string {
+  if (!cronExpression) return CRON_PRESETS[0].value
+  const match = CRON_PRESETS.find((p) => p.value === cronExpression)
+  return match ? match.value : '__custom__'
+}
 
-export function ScheduleDialog({ onClose }: Props) {
+function toLocalDatetime(iso?: string): string {
+  if (!iso) return ''
+  const dt = new Date(iso)
+  const offset = dt.getTimezoneOffset() * 60000
+  return new Date(dt.getTime() - offset).toISOString().slice(0, 16)
+}
+
+
+export function ScheduleDialog({ onClose, schedule: editTarget }: Props) {
+  const isEdit = !!editTarget
   const workflows = useWorkflowStore((s) => s.workflows)
-  const { createSchedule } = useScheduleStore()
+  const { createSchedule, updateSchedule } = useScheduleStore()
 
-  const [workflowId, setWorkflowId] = useState(workflows[0]?.id ?? '')
-  const [type, setType] = useState<ScheduleType>('cron')
-  const [preset, setPreset] = useState(CRON_PRESETS[0].value)
-  const [customCron, setCustomCron] = useState('')
-  const [scheduledAt, setScheduledAt] = useState('')
+  const [workflowId, setWorkflowId] = useState(editTarget?.workflowId ?? workflows[0]?.id ?? '')
+  const [type, setType] = useState<ScheduleType>(editTarget?.type ?? 'cron')
+  const [preset, setPreset] = useState(resolveInitialPreset(editTarget?.cronExpression))
+  const [customCron, setCustomCron] = useState(
+    editTarget?.cronExpression && resolveInitialPreset(editTarget.cronExpression) === '__custom__'
+      ? editTarget.cronExpression
+      : ''
+  )
+  const [scheduledAt, setScheduledAt] = useState(toLocalDatetime(editTarget?.scheduledAt))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -59,13 +78,22 @@ export function ScheduleDialog({ onClose }: Props) {
 
     setSaving(true)
     try {
-      await createSchedule({
-        workflowId,
-        type,
-        cronExpression: type === 'cron' ? cronExpression : undefined,
-        scheduledAt: type === 'once' ? new Date(scheduledAt).toISOString() : undefined,
-        enabled: true
-      })
+      if (isEdit) {
+        await updateSchedule(editTarget.id, {
+          workflowId,
+          type,
+          cronExpression: type === 'cron' ? cronExpression : undefined,
+          scheduledAt: type === 'once' ? new Date(scheduledAt).toISOString() : undefined
+        })
+      } else {
+        await createSchedule({
+          workflowId,
+          type,
+          cronExpression: type === 'cron' ? cronExpression : undefined,
+          scheduledAt: type === 'once' ? new Date(scheduledAt).toISOString() : undefined,
+          enabled: true
+        })
+      }
       onClose()
     } catch (e) {
       setError(String(e))
@@ -84,7 +112,9 @@ export function ScheduleDialog({ onClose }: Props) {
       <div className="bg-[#252526] border border-[#3c3c3c] rounded-lg w-[400px] shadow-2xl">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#3c3c3c]">
-          <span className="text-sm font-semibold text-[#cccccc]">스케줄 추가</span>
+          <span className="text-sm font-semibold text-[#cccccc]">
+            {isEdit ? '스케줄 수정' : '스케줄 추가'}
+          </span>
           <button
             onClick={onClose}
             className="text-[#666] hover:text-[#ccc] transition-colors text-lg leading-none"
@@ -197,7 +227,7 @@ export function ScheduleDialog({ onClose }: Props) {
             disabled={saving || workflows.length === 0}
             className="px-3 py-1 text-xs rounded bg-[#0e639c] hover:bg-[#1177bb] text-white disabled:opacity-50 transition-colors"
           >
-            {saving ? '저장 중...' : '저장'}
+            {saving ? '저장 중...' : isEdit ? '수정' : '저장'}
           </button>
         </div>
       </div>
