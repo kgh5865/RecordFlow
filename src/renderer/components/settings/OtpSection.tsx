@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import jsQR from 'jsqr'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { Input } from '../ui/Input'
@@ -64,6 +64,22 @@ export function OtpSection() {
       })
     } catch (err) {
       console.error('[OTP] delete error:', err)
+    }
+  }
+
+  const handleRenameOtp = async (id: string, newName: string) => {
+    const trimmed = newName.trim()
+    if (!trimmed) return
+    const current = settings.otpProfiles.find((p) => p.id === id)
+    if (!current || current.name === trimmed) return
+    if (settings.otpProfiles.some((p) => p.id !== id && p.name === trimmed)) return
+    try {
+      await saveSettings({
+        ...settings,
+        otpProfiles: settings.otpProfiles.map((p) => p.id === id ? { ...p, name: trimmed } : p)
+      })
+    } catch (err) {
+      console.error('[OTP] rename error:', err)
     }
   }
 
@@ -263,23 +279,12 @@ export function OtpSection() {
       ) : (
         <div className="space-y-1">
           {settings.otpProfiles.map((profile) => (
-            <div
+            <OtpProfileRow
               key={profile.id}
-              className="flex items-center justify-between px-3 py-2 bg-[#252526] border border-[#3c3c3c] rounded group"
-            >
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f3f] border border-[#007acc]/50 text-[#4fc3f7] text-[10px] rounded">
-                  🔑 <span className="font-medium">{profile.name}</span>
-                </span>
-              </div>
-              <button
-                onClick={() => handleDeleteOtp(profile.id)}
-                className="text-[#555] hover:text-red-400 transition-colors text-xs opacity-0 group-hover:opacity-100"
-                title="삭제"
-              >
-                ✕
-              </button>
-            </div>
+              profile={profile}
+              onRename={(newName) => handleRenameOtp(profile.id, newName)}
+              onDelete={() => handleDeleteOtp(profile.id)}
+            />
           ))}
         </div>
       )}
@@ -292,5 +297,71 @@ export function OtpSection() {
         배지를 선택하면 실행 시점에 OTP 코드가 자동 생성됩니다.
       </div>
     </section>
+  )
+}
+
+function OtpProfileRow({ profile, onRename, onDelete }: {
+  profile: OtpProfile
+  onRename: (newName: string) => void
+  onDelete: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(profile.name)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus()
+  }, [editing])
+
+  const startEdit = () => {
+    setDraft(profile.name)
+    setEditing(true)
+  }
+
+  const commit = () => {
+    setEditing(false)
+    if (draft.trim() && draft.trim() !== profile.name) {
+      onRename(draft.trim())
+    }
+  }
+
+  const cancel = () => {
+    setEditing(false)
+    setDraft(profile.name)
+  }
+
+  return (
+    <div className="flex items-center justify-between px-3 py-2 bg-[#252526] border border-[#3c3c3c] rounded group">
+      <div className="flex items-center gap-2">
+        {editing ? (
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commit()
+              if (e.key === 'Escape') cancel()
+            }}
+            onBlur={commit}
+            className="px-1.5 py-0.5 text-[10px] font-medium bg-[#1e1e1e] text-[#4fc3f7] border border-[#007acc] rounded outline-none caret-white w-[120px]"
+          />
+        ) : (
+          <span
+            onClick={startEdit}
+            className="flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f3f] border border-[#007acc]/50 text-[#4fc3f7] text-[10px] rounded cursor-pointer hover:border-[#007acc] transition-colors"
+            title="클릭하여 이름 변경"
+          >
+            🔑 <span className="font-medium">{profile.name}</span>
+          </span>
+        )}
+      </div>
+      <button
+        onClick={onDelete}
+        className="text-[#555] hover:text-red-400 transition-colors text-xs opacity-0 group-hover:opacity-100"
+        title="삭제"
+      >
+        ✕
+      </button>
+    </div>
   )
 }
