@@ -42,9 +42,11 @@ function EditValueDialogInner({
   closeDialog: () => void
 }) {
   const [draft, setDraft] = useState(step.value ?? '')
+  const [showSensitive, setShowSensitive] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const isOtpValue = /^\{\{otp:\s*(.+?)\s*\}\}$/.test(draft)
+  const isSensitive = step.isSensitive === true
 
   useEffect(() => {
     setTimeout(() => textareaRef.current?.focus(), 50)
@@ -149,17 +151,48 @@ function EditValueDialogInner({
           {/* Textarea */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] text-[#888]">값</label>
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] text-[#888]">값</label>
+                {isSensitive && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSensitive((v) => !v)}
+                    className="flex items-center gap-1 px-1.5 py-0.5 text-[9px] rounded border border-[#cc6633]/40 text-[#cc9966] hover:border-[#cc6633] hover:bg-[#2a1a1a] transition-colors"
+                    title={showSensitive ? '값 숨기기' : '값 보이기'}
+                  >
+                    <span>{showSensitive ? '\uD83D\uDD13' : '\uD83D\uDD12'}</span>
+                    {showSensitive ? '숨기기' : '보이기'}
+                  </button>
+                )}
+              </div>
               <span className="text-[9px] text-[#555]">Ctrl+Enter로 저장</span>
             </div>
-            <textarea
-              ref={textareaRef}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={6}
-              className="w-full px-2 py-1.5 text-sm font-mono bg-[#1e1e1e] text-[#ce9178] border border-[#3c3c3c] rounded outline-none focus:border-[#007acc] resize-y caret-white"
-              placeholder="값을 입력하세요..."
-            />
+            {isSensitive && !showSensitive ? (
+              <div className="relative">
+                <input
+                  type="password"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                      e.preventDefault()
+                      handleConfirm()
+                    }
+                  }}
+                  className="w-full px-2 py-1.5 text-sm font-mono bg-[#1e1e1e] text-[#ce9178] border border-[#3c3c3c] rounded outline-none focus:border-[#007acc] caret-white"
+                  placeholder="값을 입력하세요..."
+                />
+              </div>
+            ) : (
+              <textarea
+                ref={textareaRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={6}
+                className="w-full px-2 py-1.5 text-sm font-mono bg-[#1e1e1e] text-[#ce9178] border border-[#3c3c3c] rounded outline-none focus:border-[#007acc] resize-y caret-white"
+                placeholder="값을 입력하세요..."
+              />
+            )}
           </div>
 
           {/* 구분선 */}

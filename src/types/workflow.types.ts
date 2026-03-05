@@ -24,6 +24,7 @@ export interface WorkflowStep {
   value?: string      // fill, select 값
   url?: string        // navigate, expect(url) 전용
   rawLine?: string    // runner 실행용: 원본 codegen 라인 (e.g. await page.click(...))
+  isSensitive?: boolean  // 민감 정보(비밀번호 등) 여부 — UI 마스킹용
 }
 
 export interface StorageData {

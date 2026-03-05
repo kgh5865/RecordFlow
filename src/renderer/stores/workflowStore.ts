@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { WorkflowFolder, Workflow, WorkflowStep, StorageData, WorkflowExportFile } from '../../types/workflow.types'
+import { isSensitiveStep } from '../../types/sensitive'
 
 interface WorkflowState {
   folders: WorkflowFolder[]
@@ -289,7 +290,18 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   loadFromStorage: async () => {
     const data: StorageData = await window.electronAPI.loadStorage()
-    set({ folders: data.folders, workflows: data.workflows, _snapshots: {}, dirtyWorkflowIds: [] })
+    // 기존 워크플로우의 isSensitive 플래그 자동 감지 (마이그레이션)
+    const workflows = data.workflows.map((w) => ({
+      ...w,
+      steps: w.steps.map((s) => {
+        if (s.isSensitive !== undefined) return s
+        if (s.action === 'fill' && isSensitiveStep(s.selector, s.value)) {
+          return { ...s, isSensitive: true }
+        }
+        return s
+      })
+    }))
+    set({ folders: data.folders, workflows, _snapshots: {}, dirtyWorkflowIds: [] })
   },
 
   persistToStorage: async () => {

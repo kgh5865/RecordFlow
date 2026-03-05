@@ -1,4 +1,5 @@
 import type { ActionType, WorkflowStep } from '../../types/workflow.types'
+import { isSensitiveStep } from '../../types/sensitive'
 
 // Playwright codegen이 생성하는 locator 유형 (우선순위 순)
 // getByRole > getByLabel > getByPlaceholder > getByText > getByTestId > locator(css) > locator(xpath)
@@ -81,12 +82,14 @@ export function parse(tsCode: string): WorkflowStep[] {
       const match = trimmed.match(pattern.regex)
       if (match) {
         const extracted = pattern.extract(match)
+        const sensitive = pattern.action === 'fill' && isSensitiveStep(extracted.selector, extracted.value)
         steps.push({
           id: crypto.randomUUID(),
           order: steps.length,
           action: pattern.action,
           rawLine: trimmed.replace(/^await\s+/, '').replace(/;$/, ''),
-          ...extracted
+          ...extracted,
+          ...(sensitive ? { isSensitive: true } : {})
         })
         break // 한 라인에 하나의 패턴만 적용
       }

@@ -1,41 +1,7 @@
 import { dialog } from 'electron'
 import { readFile, writeFile } from 'fs/promises'
 import type { Workflow, WorkflowStep, WorkflowStepExport, WorkflowExportFile } from '../../types/workflow.types'
-
-// --- 민감 정보 감지 규칙 ---
-
-interface SensitiveRule {
-  pattern: RegExp
-  type: string
-  placeholder: string
-}
-
-const SENSITIVE_RULES: SensitiveRule[] = [
-  // 비밀번호 / password
-  { pattern: /password|passwd|pwd|비밀번호|패스워드/i,                        type: 'password', placeholder: '{{password}}' },
-  // 아이디 / username
-  { pattern: /username|userid|user_id|loginid|login.id|아이디|사용자명|사용자.?이름/i, type: 'username', placeholder: '{{username}}' },
-  // 이메일 / email
-  { pattern: /\bemail\b|이메일/i,                                             type: 'email',    placeholder: '{{email}}' },
-  // OTP / 인증번호
-  { pattern: /\botp\b|\btotp\b|\bmfa\b|\b2fa\b|일회용|인증번호/i,            type: 'otp',      placeholder: '{{otp}}' },
-  // id (영문 단독)
-  { pattern: /(?:^|[\s[#"'=])(id)(?:[\s\]"'=]|$)/i,                         type: 'id',       placeholder: '{{id}}' },
-]
-
-const OTP_TOKEN_PATTERN = /^\{\{otp:\s*.+?\s*\}\}$/
-
-function detectSensitive(selector: string | undefined, value: string | undefined): SensitiveRule | null {
-  // OTP 토큰 값은 selector 무관하게 항상 마스킹
-  if (value && OTP_TOKEN_PATTERN.test(value)) {
-    return { pattern: OTP_TOKEN_PATTERN, type: 'otp', placeholder: '{{otp}}' }
-  }
-  if (!selector) return null
-  for (const rule of SENSITIVE_RULES) {
-    if (rule.pattern.test(selector)) return rule
-  }
-  return null
-}
+import { detectSensitive } from '../../types/sensitive'
 
 // --- 스텝 마스킹 ---
 
