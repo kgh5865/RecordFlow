@@ -47,12 +47,18 @@ export async function runWorkflow(
       completedSteps++
     }
 
+    // 마지막 스텝 완료 후 3초 대기 (결과 확인용)
+    await page.waitForTimeout(3000)
+
     const result: RunnerResult = { success: true, completedSteps }
     if (win && !win.isDestroyed()) {
       win.webContents.send('runner:complete', result)
     }
     return result
   } catch (err) {
+    // 에러 발생 시에도 3초 대기 (문제 확인용)
+    await page.waitForTimeout(3000).catch(() => {})
+
     const result: RunnerResult = {
       success: false,
       error: String(err),
