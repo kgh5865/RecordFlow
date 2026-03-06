@@ -43,11 +43,18 @@ export interface RunnerResult {
 
 // --- Scheduler 타입 ---
 
+export interface FolderVariable {
+  key: string
+  value: string
+  isSensitive: boolean
+}
+
 export interface ScheduleFolder {
   id: string
   name: string
   parentId?: string
   createdAt: string
+  variables?: FolderVariable[]
 }
 
 export type ScheduleType = 'cron' | 'once'
@@ -132,6 +139,7 @@ export interface ElectronAPI {
   createScheduleFolder: (data: Omit<ScheduleFolder, 'id' | 'createdAt'>) => Promise<ScheduleFolder>
   deleteScheduleFolder: (id: string) => Promise<void>
   renameScheduleFolder: (id: string, name: string) => Promise<ScheduleFolder>
+  updateScheduleFolderVariables: (id: string, variables: FolderVariable[]) => Promise<ScheduleFolder>
 
   // Schedule CRUD
   listSchedules: () => Promise<Schedule[]>

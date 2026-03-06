@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Schedule, ScheduleFolder, ScheduleLog, WorkflowStep } from '../../types/workflow.types'
+import type { Schedule, ScheduleFolder, FolderVariable, ScheduleLog, WorkflowStep } from '../../types/workflow.types'
 import { normalizeSelector, rebuildRawLine } from '../utils/selectorUtils'
 
 interface ScheduleState {
@@ -13,6 +13,7 @@ interface ScheduleState {
   createScheduleFolder: (name: string, parentId?: string) => Promise<ScheduleFolder>
   deleteScheduleFolder: (id: string) => Promise<void>
   renameScheduleFolder: (id: string, name: string) => Promise<void>
+  updateScheduleFolderVariables: (id: string, variables: FolderVariable[]) => Promise<void>
 
   // Schedule
   loadSchedules: () => Promise<void>
@@ -77,6 +78,13 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
 
   renameScheduleFolder: async (id, name) => {
     const updated = await window.electronAPI.renameScheduleFolder(id, name)
+    set((s) => ({
+      scheduleFolders: s.scheduleFolders.map((f) => (f.id === id ? updated : f))
+    }))
+  },
+
+  updateScheduleFolderVariables: async (id, variables) => {
+    const updated = await window.electronAPI.updateScheduleFolderVariables(id, variables)
     set((s) => ({
       scheduleFolders: s.scheduleFolders.map((f) => (f.id === id ? updated : f))
     }))

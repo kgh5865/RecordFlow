@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { StorageData, WorkflowStep, RunnerResult, Schedule, ScheduleFolder, ScheduleLog, AppSettings, Workflow, WorkflowExportFile } from '../types/workflow.types'
+import type { StorageData, WorkflowStep, RunnerResult, Schedule, ScheduleFolder, FolderVariable, ScheduleLog, AppSettings, Workflow, WorkflowExportFile } from '../types/workflow.types'
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Storage
@@ -52,6 +52,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   renameScheduleFolder: (id: string, name: string): Promise<ScheduleFolder> =>
     ipcRenderer.invoke('schedule-folder:rename', id, name),
+
+  updateScheduleFolderVariables: (id: string, variables: FolderVariable[]): Promise<ScheduleFolder> =>
+    ipcRenderer.invoke('schedule-folder:update-variables', id, variables),
 
   // Schedule CRUD
   listSchedules: (): Promise<Schedule[]> =>

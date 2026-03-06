@@ -14,7 +14,7 @@ import {
   runScheduleNow
 } from './services/scheduler.service'
 import { saveWorkflowToFile, loadWorkflowFromFile } from './services/workflow-file.service'
-import type { StorageData, WorkflowStep, Schedule, ScheduleFolder, Workflow } from '../types/workflow.types'
+import type { StorageData, WorkflowStep, Schedule, ScheduleFolder, FolderVariable, Workflow } from '../types/workflow.types'
 
 export function registerIpcHandlers(
   getMainWindow: () => BrowserWindow | null,
@@ -148,6 +148,22 @@ export function registerIpcHandlers(
       return storage.scheduleFolders[idx]
     } catch (err) {
       console.error('[IPC] schedule-folder:rename error:', err)
+      throw err
+    }
+  })
+
+  ipcMain.handle('schedule-folder:update-variables', async (_event, id: string, variables: FolderVariable[]) => {
+    try {
+      if (typeof id !== 'string' || !id) throw new Error('Invalid id parameter')
+      if (!Array.isArray(variables)) throw new Error('Invalid variables parameter')
+      const storage = loadStorage()
+      const idx = storage.scheduleFolders.findIndex((f) => f.id === id)
+      if (idx === -1) throw new Error('Schedule folder not found')
+      storage.scheduleFolders[idx] = { ...storage.scheduleFolders[idx], variables }
+      await saveStorage(storage)
+      return storage.scheduleFolders[idx]
+    } catch (err) {
+      console.error('[IPC] schedule-folder:update-variables error:', err)
       throw err
     }
   })

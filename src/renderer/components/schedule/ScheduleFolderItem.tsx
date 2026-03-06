@@ -3,6 +3,7 @@ import { useUiStore } from '../../stores/uiStore'
 import { useScheduleStore } from '../../stores/scheduleStore'
 import { ScheduleItem } from './ScheduleItem'
 import { ConfirmDialog } from '../dialogs/ConfirmDialog'
+import { FolderVariablesDialog } from '../dialogs/FolderVariablesDialog'
 import { ScheduleDialog } from './ScheduleDialog'
 import type { ScheduleFolder, Schedule } from '../../../types/workflow.types'
 
@@ -30,6 +31,7 @@ export const ScheduleFolderItem = memo(function ScheduleFolderItem({ folder, sch
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [pendingDelete, setPendingDelete] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [varsDialogOpen, setVarsDialogOpen] = useState(false)
 
   const childFolders = allFolders.filter((f) => f.parentId === folder.id)
 
@@ -60,6 +62,11 @@ export const ScheduleFolderItem = memo(function ScheduleFolderItem({ folder, sch
         </span>
         <span className="text-[#dcb67a] mr-1">📁</span>
         <span className="text-[13px] text-[#cccccc] truncate flex-1">{folder.name}</span>
+        {(folder.variables?.length ?? 0) > 0 && (
+          <span className="text-[9px] text-[#888] bg-[#333] px-1 rounded" title="폴더 변수 설정됨">
+            {folder.variables!.length}변수
+          </span>
+        )}
         <span className="text-[10px] text-[#666] ml-auto opacity-0 group-hover:opacity-100">
           {schedules.length}
         </span>
@@ -114,6 +121,13 @@ export const ScheduleFolderItem = memo(function ScheduleFolderItem({ folder, sch
         />
       )}
 
+      {varsDialogOpen && (
+        <FolderVariablesDialog
+          folder={folder}
+          onClose={() => setVarsDialogOpen(false)}
+        />
+      )}
+
       {menu && (
         <ContextMenuInline
           x={menu.x}
@@ -125,6 +139,13 @@ export const ScheduleFolderItem = memo(function ScheduleFolderItem({ folder, sch
                 setMenu(null)
                 selectScheduleFolder(folder.id)
                 setAddDialogOpen(true)
+              }
+            },
+            {
+              label: `Variables${folder.variables?.length ? ` (${folder.variables.length})` : ''}`,
+              onClick: () => {
+                setMenu(null)
+                setVarsDialogOpen(true)
               }
             },
             {

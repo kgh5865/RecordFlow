@@ -106,11 +106,15 @@ async function executeSchedule(scheduleId: string): Promise<void> {
   const workflow = storage.workflows.find((w) => w.id === schedule.workflowId)
   const workflowName = workflow?.name ?? '(삭제된 워크플로우)'
 
+  // 폴더 변수 조회
+  const folder = storage.scheduleFolders.find((f) => f.id === schedule.folderId)
+  const folderVariables = folder?.variables ?? []
+
   runningSet.add(scheduleId)
   const startedAt = new Date().toISOString()
 
   try {
-    const result = await runWorkflow(null, steps, { headless: true })
+    const result = await runWorkflow(null, steps, { headless: true, folderVariables })
     const finishedAt = new Date().toISOString()
 
     const log: ScheduleLog = {
@@ -193,11 +197,15 @@ export async function runScheduleNow(scheduleId: string): Promise<ScheduleLog | 
   const workflow = storage.workflows.find((w) => w.id === schedule.workflowId)
   const workflowName = workflow?.name ?? '(삭제된 워크플로우)'
 
+  // 폴더 변수 조회
+  const folder = storage.scheduleFolders.find((f) => f.id === schedule.folderId)
+  const folderVariables = folder?.variables ?? []
+
   runningSet.add(scheduleId)
   const startedAt = new Date().toISOString()
 
   try {
-    const result = await runWorkflow(null, steps, { headless: true })
+    const result = await runWorkflow(null, steps, { headless: true, folderVariables })
     const finishedAt = new Date().toISOString()
 
     const log: ScheduleLog = {

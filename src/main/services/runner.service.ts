@@ -1,6 +1,6 @@
 import type { BrowserWindow } from 'electron'
 import { createRequire } from 'module'
-import type { WorkflowStep, RunnerResult } from '../../types/workflow.types'
+import type { WorkflowStep, RunnerResult, FolderVariable } from '../../types/workflow.types'
 import { loadSettings } from './settings.service'
 
 // createRequire로 런타임 require 생성 → Rollup이 추적하지 못해 번들에 포함 안 됨
@@ -28,9 +28,10 @@ async function loadOtplib() {
 export async function runWorkflow(
   win: BrowserWindow | null,
   steps: WorkflowStep[],
-  options?: { headless?: boolean }
+  options?: { headless?: boolean; folderVariables?: FolderVariable[] }
 ): Promise<RunnerResult> {
   const headless = options?.headless ?? false
+  const folderVars = options?.folderVariables ?? []
   const browser = await chromium.launch({ headless })
   const page = await browser.newPage()
 
@@ -43,7 +44,7 @@ export async function runWorkflow(
         win.webContents.send('runner:step-update', i)
       }
 
-      await executeStep(page, step)
+      await executeStep(page, step, folderVars)
       completedSteps++
     }
 
@@ -73,7 +74,7 @@ export async function runWorkflow(
   }
 }
 
-async function executeStep(page: Page, step: WorkflowStep): Promise<void> {
+async function executeStep(page: Page, step: WorkflowStep, folderVars: FolderVariable[]): Promise<void> {
   switch (step.action) {
     case 'navigate':
       if (step.url) await page.goto(step.url)
@@ -86,14 +87,14 @@ async function executeStep(page: Page, step: WorkflowStep): Promise<void> {
     }
 
     case 'fill': {
-      const fillValue = step.value != null ? await resolveValue(step.value) : ''
+      const fillValue = step.value != null ? await resolveValue(step.value, folderVars) : ''
       const locator = resolveFromRaw(page, step.rawLine, /\.fill\(/)
       await locator.fill(fillValue)
       break
     }
 
     case 'select': {
-      const selectValue = step.value != null ? await resolveValue(step.value) : ''
+      const selectValue = step.value != null ? await resolveValue(step.value, folderVars) : ''
       const locator = resolveFromRaw(page, step.rawLine, /\.selectOption\(/)
       await locator.selectOption(selectValue)
       break
@@ -164,9 +165,19 @@ function formatDate(date: Date, format: string): string {
 // value 패턴 처리:
 //   {{otp:프로필명}}              → OTP 프로필 secret으로 TOTP 코드 생성 (전체 값 매칭)
 //   {{date:오프셋}} 또는 {{date:오프셋:포맷}} → 날짜 치환 (인라인, 텍스트와 혼합 가능)
-async function resolveValue(value: string): Promise<string> {
+async function resolveValue(value: string, folderVars: FolderVariable[] = []): Promise<string> {
+  // {{var:key}} 패턴 — 폴더 변수 치환 (인라인, 텍스트와 혼합 가능)
+  let resolved = value.replace(
+    /\{\{var:\s*(.+?)\s*\}\}/g,
+    (_match, key) => {
+      const v = folderVars.find((fv) => fv.key === key)
+      if (!v) throw new Error(`폴더 변수 "${key}"을 찾을 수 없습니다. 폴더 변수 설정을 확인하세요.`)
+      return v.value
+    }
+  )
+
   // {{otp:name}} 패턴 — 전체 값 매칭만 지원
-  const otpMatch = value.match(/^\{\{otp:\s*(.+?)\s*\}\}$/)
+  const otpMatch = resolved.match(/^\{\{otp:\s*(.+?)\s*\}\}$/)
   if (otpMatch) {
     const profileName = otpMatch[1]
     const settings = loadSettings()
@@ -177,7 +188,7 @@ async function resolveValue(value: string): Promise<string> {
   }
 
   // {{date:offset}} 또는 {{date:offset:format}} 패턴 — 인라인 치환
-  const resolved = value.replace(
+  resolved = resolved.replace(
     /\{\{date:([+-]?\d+)(?::([^}]+))?\}\}/g,
     (_match, offsetStr, formatStr) => {
       const offset = parseInt(offsetStr, 10)
