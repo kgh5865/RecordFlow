@@ -266,15 +266,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     }
 
     const now = new Date().toISOString()
-    const steps: WorkflowStep[] = file.workflow.steps.map((s, i) => ({
-      id: crypto.randomUUID(),
-      order: i,
-      action: s.action,
-      ...(s.selector !== undefined ? { selector: s.selector } : {}),
-      ...(s.value !== undefined ? { value: s.value } : {}),
-      ...(s.url !== undefined ? { url: s.url } : {}),
-      ...(s.rawLine !== undefined ? { rawLine: s.rawLine } : {}),
-    }))
+    const steps: WorkflowStep[] = file.workflow.steps.map((s, i) => {
+      const sensitive = s.action === 'fill' && isSensitiveStep(s.selector, s.value)
+      return {
+        id: crypto.randomUUID(),
+        order: i,
+        action: s.action,
+        ...(s.selector !== undefined ? { selector: s.selector } : {}),
+        ...(s.value !== undefined ? { value: s.value } : {}),
+        ...(s.url !== undefined ? { url: s.url } : {}),
+        ...(s.rawLine !== undefined ? { rawLine: s.rawLine } : {}),
+        ...(sensitive ? { isSensitive: true } : {}),
+      }
+    })
 
     const workflow: Workflow = {
       id: crypto.randomUUID(),
