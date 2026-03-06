@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { StorageData, WorkflowStep, RunnerResult, Schedule, ScheduleLog, AppSettings, Workflow, WorkflowExportFile } from '../types/workflow.types'
+import type { StorageData, WorkflowStep, RunnerResult, Schedule, ScheduleFolder, ScheduleLog, AppSettings, Workflow, WorkflowExportFile } from '../types/workflow.types'
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Storage
@@ -40,6 +40,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners(channel)
   },
 
+  // Schedule Folder CRUD
+  listScheduleFolders: (): Promise<ScheduleFolder[]> =>
+    ipcRenderer.invoke('schedule-folder:list'),
+
+  createScheduleFolder: (data: Omit<ScheduleFolder, 'id' | 'createdAt'>): Promise<ScheduleFolder> =>
+    ipcRenderer.invoke('schedule-folder:create', data),
+
+  deleteScheduleFolder: (id: string): Promise<void> =>
+    ipcRenderer.invoke('schedule-folder:delete', id),
+
+  renameScheduleFolder: (id: string, name: string): Promise<ScheduleFolder> =>
+    ipcRenderer.invoke('schedule-folder:rename', id, name),
+
   // Schedule CRUD
   listSchedules: (): Promise<Schedule[]> =>
     ipcRenderer.invoke('schedule:list'),
@@ -61,6 +74,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   runScheduleNow: (scheduleId: string): Promise<ScheduleLog | null> =>
     ipcRenderer.invoke('schedule:run-now', scheduleId),
+
+  moveSchedule: (id: string, targetFolderId: string): Promise<Schedule> =>
+    ipcRenderer.invoke('schedule:move', id, targetFolderId),
 
   // Settings
   getSettings: (): Promise<AppSettings> =>

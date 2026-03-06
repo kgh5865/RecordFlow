@@ -23,6 +23,7 @@ export function ConfirmDialog({ title, message, confirmLabel = '삭제', variant
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       style={{ background: 'rgba(0,0,0,0.65)' }}
+      onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div

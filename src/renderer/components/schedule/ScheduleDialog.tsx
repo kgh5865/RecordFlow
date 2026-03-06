@@ -8,6 +8,8 @@ interface Props {
   onClose: () => void
   /** 수정 모드: 기존 스케줄 전달 시 편집 UI */
   schedule?: Schedule
+  /** 새 스케줄 생성 시 기본 폴더 */
+  defaultFolderId?: string
 }
 
 const CRON_PRESETS = [
@@ -45,11 +47,12 @@ function toLocalDatetime(iso?: string): string {
 }
 
 
-export function ScheduleDialog({ onClose, schedule: editTarget }: Props) {
+export function ScheduleDialog({ onClose, schedule: editTarget, defaultFolderId }: Props) {
   const isEdit = !!editTarget
   const workflows = useWorkflowStore((s) => s.workflows)
-  const { createSchedule, updateSchedule } = useScheduleStore()
+  const { scheduleFolders, createSchedule, updateSchedule } = useScheduleStore()
 
+  const [folderId, setFolderId] = useState(editTarget?.folderId ?? defaultFolderId ?? scheduleFolders[0]?.id ?? '')
   const [workflowId, setWorkflowId] = useState(editTarget?.workflowId ?? workflows[0]?.id ?? '')
   const [type, setType] = useState<ScheduleType>(editTarget?.type ?? 'cron')
   const [preset, setPreset] = useState(resolveInitialPreset(editTarget?.cronExpression))
@@ -66,6 +69,7 @@ export function ScheduleDialog({ onClose, schedule: editTarget }: Props) {
 
   const handleSave = async () => {
     setError('')
+    if (!folderId) { setError('폴더를 선택하세요.'); return }
     if (!workflowId) { setError('워크플로우를 선택하세요.'); return }
 
     if (type === 'cron') {
@@ -81,6 +85,7 @@ export function ScheduleDialog({ onClose, schedule: editTarget }: Props) {
       if (isEdit) {
         await updateSchedule(editTarget.id, {
           workflowId,
+          folderId,
           type,
           cronExpression: type === 'cron' ? cronExpression : undefined,
           scheduledAt: type === 'once' ? new Date(scheduledAt).toISOString() : undefined
@@ -88,6 +93,7 @@ export function ScheduleDialog({ onClose, schedule: editTarget }: Props) {
       } else {
         await createSchedule({
           workflowId,
+          folderId,
           type,
           cronExpression: type === 'cron' ? cronExpression : undefined,
           scheduledAt: type === 'once' ? new Date(scheduledAt).toISOString() : undefined,
@@ -125,6 +131,23 @@ export function ScheduleDialog({ onClose, schedule: editTarget }: Props) {
 
         {/* 폼 */}
         <div className="px-4 py-4 space-y-4">
+          {/* 폴더 선택 */}
+          <div>
+            <label className="block text-[11px] text-[#888] mb-1">폴더</label>
+            <select
+              value={folderId}
+              onChange={(e) => setFolderId(e.target.value)}
+              className="w-full bg-[#3c3c3c] text-[#cccccc] text-xs rounded px-2 py-1.5 border border-[#555] focus:outline-none focus:border-[#007acc]"
+            >
+              {scheduleFolders.length === 0 && (
+                <option value="">폴더를 먼저 생성하세요</option>
+              )}
+              {scheduleFolders.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* 워크플로우 선택 */}
           <div>
             <label className="block text-[11px] text-[#888] mb-1">워크플로우</label>
@@ -224,7 +247,7 @@ export function ScheduleDialog({ onClose, schedule: editTarget }: Props) {
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || workflows.length === 0}
+            disabled={saving || workflows.length === 0 || scheduleFolders.length === 0}
             className="px-3 py-1 text-xs rounded bg-[#0e639c] hover:bg-[#1177bb] text-white disabled:opacity-50 transition-colors"
           >
             {saving ? '저장 중...' : isEdit ? '수정' : '저장'}

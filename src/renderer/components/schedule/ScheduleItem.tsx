@@ -69,7 +69,7 @@ export const ScheduleItem = memo(function ScheduleItem({ schedule, isSelected, o
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setPendingDelete(false) }}
-      className={`flex items-start gap-2 px-3 py-2.5 cursor-pointer border-b border-[#2a2a2a] transition-colors ${
+      className={`flex items-start gap-2 px-3 py-2 cursor-pointer transition-colors ${
         isSelected ? 'bg-[#094771]' : 'hover:bg-[#2a2d2e]'
       }`}
     >

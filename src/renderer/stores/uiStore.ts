@@ -14,6 +14,8 @@ export type DialogState =
   | { type: 'import-workflow'; file: WorkflowExportFile }
   | { type: 'edit-value'; workflowId: string; stepId: string; step: WorkflowStep }
   | { type: 're-record'; targetWorkflowId: string; workflowName: string }
+  | { type: 'new-schedule-folder' }
+  | { type: 'rename-schedule-folder'; targetFolderId: string; currentName: string }
 
 export interface ToastState {
   message: string
@@ -24,6 +26,10 @@ interface UiState {
   selectedWorkflowId: string | null
   selectedFolderId: string | null
   expandedFolderIds: string[]
+
+  // 스케줄 폴더 UI 상태
+  selectedScheduleFolderId: string | null
+  expandedScheduleFolderIds: string[]
 
   dialog: DialogState
 
@@ -49,6 +55,10 @@ interface UiState {
   toggleFolder: (id: string) => void
   expandFolder: (id: string) => void
 
+  selectScheduleFolder: (id: string | null) => void
+  toggleScheduleFolder: (id: string) => void
+  expandScheduleFolder: (id: string) => void
+
   openDialog: (dialog: Exclude<DialogState, { type: null }>) => void
   closeDialog: () => void
 
@@ -60,6 +70,9 @@ export const useUiStore = create<UiState>((set) => ({
   selectedWorkflowId: null,
   selectedFolderId: null,
   expandedFolderIds: [],
+
+  selectedScheduleFolderId: null,
+  expandedScheduleFolderIds: [],
 
   dialog: { type: null },
 
@@ -95,6 +108,22 @@ export const useUiStore = create<UiState>((set) => ({
       expandedFolderIds: s.expandedFolderIds.includes(id)
         ? s.expandedFolderIds
         : [...s.expandedFolderIds, id]
+    })),
+
+  selectScheduleFolder: (id) => set({ selectedScheduleFolderId: id }),
+
+  toggleScheduleFolder: (id) =>
+    set((s) => ({
+      expandedScheduleFolderIds: s.expandedScheduleFolderIds.includes(id)
+        ? s.expandedScheduleFolderIds.filter((x) => x !== id)
+        : [...s.expandedScheduleFolderIds, id]
+    })),
+
+  expandScheduleFolder: (id) =>
+    set((s) => ({
+      expandedScheduleFolderIds: s.expandedScheduleFolderIds.includes(id)
+        ? s.expandedScheduleFolderIds
+        : [...s.expandedScheduleFolderIds, id]
     })),
 
   openDialog: (dialog) => set({ dialog }),

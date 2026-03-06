@@ -9,7 +9,8 @@ const DEFAULT_DATA: StorageData = {
   version: '1.0',
   folders: [],
   workflows: [],
-  schedules: []
+  schedules: [],
+  scheduleFolders: []
 }
 
 let _cache: StorageData | null = null
@@ -17,8 +18,8 @@ let _cache: StorageData | null = null
 export function loadStorage(): StorageData {
   if (_cache) return _cache
   const parsed = loadSecureSync<StorageData>(DATA_FILE, DEFAULT_DATA)
-  // Migration: ensure schedules field exists in older data files
-  _cache = { ...parsed, schedules: parsed.schedules ?? [] }
+  // Migration: ensure schedules/scheduleFolders fields exist in older data files
+  _cache = { ...parsed, schedules: parsed.schedules ?? [], scheduleFolders: parsed.scheduleFolders ?? [] }
   return _cache
 }
 

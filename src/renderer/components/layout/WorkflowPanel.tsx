@@ -91,6 +91,7 @@ import { MoveWorkflowDialog } from '../dialogs/MoveWorkflowDialog'
 import { RenameDialog } from '../dialogs/RenameDialog'
 import { ImportWorkflowDialog } from '../dialogs/ImportWorkflowDialog'
 import { EditValueDialog } from '../dialogs/EditValueDialog'
+import { NewScheduleFolderDialog } from '../dialogs/NewScheduleFolderDialog'
 
 function Dialogs() {
   const { dialog } = useUiStore()
@@ -99,8 +100,9 @@ function Dialogs() {
   if (dialog.type === 'new-folder') return <NewFolderDialog />
   if (dialog.type === 'new-workflow') return <NewWorkflowDialog />
   if (dialog.type === 'move-workflow') return <MoveWorkflowDialog />
-  if (dialog.type === 'rename-folder' || dialog.type === 'rename-workflow') return <RenameDialog />
+  if (dialog.type === 'rename-folder' || dialog.type === 'rename-workflow' || dialog.type === 'rename-schedule-folder') return <RenameDialog />
   if (dialog.type === 'import-workflow') return <ImportWorkflowDialog />
   if (dialog.type === 'edit-value') return <EditValueDialog />
+  if (dialog.type === 'new-schedule-folder') return <NewScheduleFolderDialog />
   return null
 }

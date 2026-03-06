@@ -9,6 +9,7 @@ import { useIpc } from './hooks/useIpc'
 export default function App() {
   const loadFromStorage = useWorkflowStore((s) => s.loadFromStorage)
   const loadSchedules = useScheduleStore((s) => s.loadSchedules)
+  const loadScheduleFolders = useScheduleStore((s) => s.loadScheduleFolders)
   const loadSettings = useSettingsStore((s) => s.loadSettings)
   const applyRunEvent = useScheduleStore((s) => s.applyRunEvent)
 
@@ -17,13 +18,14 @@ export default function App() {
   useEffect(() => {
     loadFromStorage()
     loadSchedules()
+    loadScheduleFolders()
     loadSettings()
 
     // 스케줄 실행 이벤트 구독 (Main → Renderer 푸시)
     window.electronAPI.onScheduleRunEvent((log) => {
       applyRunEvent(log)
     })
-  }, [loadFromStorage, loadSchedules, loadSettings, applyRunEvent])
+  }, [loadFromStorage, loadSchedules, loadScheduleFolders, loadSettings, applyRunEvent])
 
   return (
     <ErrorBoundary>

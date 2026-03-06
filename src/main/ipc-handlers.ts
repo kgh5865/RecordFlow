@@ -14,7 +14,7 @@ import {
   runScheduleNow
 } from './services/scheduler.service'
 import { saveWorkflowToFile, loadWorkflowFromFile } from './services/workflow-file.service'
-import type { StorageData, WorkflowStep, Schedule, Workflow } from '../types/workflow.types'
+import type { StorageData, WorkflowStep, Schedule, ScheduleFolder, Workflow } from '../types/workflow.types'
 
 export function registerIpcHandlers(
   getMainWindow: () => BrowserWindow | null,
@@ -36,7 +36,12 @@ export function registerIpcHandlers(
   ipcMain.handle('storage:save', async (_event, data: StorageData) => {
     try {
       const existing = loadStorage()
-      await saveStorage({ ...existing, ...data, schedules: data.schedules ?? existing.schedules ?? [] })
+      await saveStorage({
+        ...existing,
+        ...data,
+        schedules: data.schedules ?? existing.schedules ?? [],
+        scheduleFolders: data.scheduleFolders ?? existing.scheduleFolders ?? []
+      })
     } catch (err) {
       console.error('[IPC] storage:save error:', err)
       throw err
@@ -76,6 +81,72 @@ export function registerIpcHandlers(
       await runWorkflow(win, steps)
     } catch (err) {
       console.error('[IPC] runner:start error:', err)
+      throw err
+    }
+  })
+
+  // --- Schedule Folder IPC ---
+
+  ipcMain.handle('schedule-folder:list', () => {
+    try {
+      return loadStorage().scheduleFolders
+    } catch (err) {
+      console.error('[IPC] schedule-folder:list error:', err)
+      throw err
+    }
+  })
+
+  ipcMain.handle('schedule-folder:create', async (_event, data: Omit<ScheduleFolder, 'id' | 'createdAt'>) => {
+    try {
+      const storage = loadStorage()
+      const folder: ScheduleFolder = {
+        ...data,
+        id: randomUUID(),
+        createdAt: new Date().toISOString()
+      }
+      storage.scheduleFolders.push(folder)
+      await saveStorage(storage)
+      return folder
+    } catch (err) {
+      console.error('[IPC] schedule-folder:create error:', err)
+      throw err
+    }
+  })
+
+  ipcMain.handle('schedule-folder:delete', async (_event, id: string) => {
+    try {
+      if (typeof id !== 'string' || !id) throw new Error('Invalid id parameter')
+      const storage = loadStorage()
+      // 재귀적으로 하위 폴더 ID 수집
+      const getAllDescendantIds = (rootId: string): string[] => {
+        const children = storage.scheduleFolders.filter((f) => f.parentId === rootId)
+        return [rootId, ...children.flatMap((c) => getAllDescendantIds(c.id))]
+      }
+      const toDelete = new Set(getAllDescendantIds(id))
+      // 하위 폴더에 속한 스케줄도 모두 삭제 (및 unregister)
+      storage.schedules
+        .filter((s) => toDelete.has(s.folderId))
+        .forEach((s) => unregisterSchedule(s.id))
+      storage.schedules = storage.schedules.filter((s) => !toDelete.has(s.folderId))
+      storage.scheduleFolders = storage.scheduleFolders.filter((f) => !toDelete.has(f.id))
+      await saveStorage(storage)
+    } catch (err) {
+      console.error('[IPC] schedule-folder:delete error:', err)
+      throw err
+    }
+  })
+
+  ipcMain.handle('schedule-folder:rename', async (_event, id: string, name: string) => {
+    try {
+      if (typeof id !== 'string' || !id) throw new Error('Invalid id parameter')
+      const storage = loadStorage()
+      const idx = storage.scheduleFolders.findIndex((f) => f.id === id)
+      if (idx === -1) throw new Error('Schedule folder not found')
+      storage.scheduleFolders[idx] = { ...storage.scheduleFolders[idx], name }
+      await saveStorage(storage)
+      return storage.scheduleFolders[idx]
+    } catch (err) {
+      console.error('[IPC] schedule-folder:rename error:', err)
       throw err
     }
   })
@@ -198,6 +269,22 @@ export function registerIpcHandlers(
       return await runScheduleNow(scheduleId)
     } catch (err) {
       console.error('[IPC] schedule:run-now error:', err)
+      throw err
+    }
+  })
+
+  ipcMain.handle('schedule:move', async (_event, id: string, targetFolderId: string) => {
+    try {
+      if (typeof id !== 'string' || !id) throw new Error('Invalid id parameter')
+      const storage = loadStorage()
+      const idx = storage.schedules.findIndex((s) => s.id === id)
+      if (idx === -1) throw new Error('Schedule not found')
+      const updated: Schedule = { ...storage.schedules[idx], folderId: targetFolderId }
+      storage.schedules[idx] = updated
+      await saveStorage(storage)
+      return updated
+    } catch (err) {
+      console.error('[IPC] schedule:move error:', err)
       throw err
     }
   })

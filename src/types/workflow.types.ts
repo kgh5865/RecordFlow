@@ -32,6 +32,7 @@ export interface StorageData {
   folders: WorkflowFolder[]
   workflows: Workflow[]
   schedules: Schedule[]
+  scheduleFolders: ScheduleFolder[]
 }
 
 export interface RunnerResult {
@@ -42,11 +43,19 @@ export interface RunnerResult {
 
 // --- Scheduler 타입 ---
 
+export interface ScheduleFolder {
+  id: string
+  name: string
+  parentId?: string
+  createdAt: string
+}
+
 export type ScheduleType = 'cron' | 'once'
 
 export interface Schedule {
   id: string
   workflowId: string
+  folderId: string
   type: ScheduleType
   cronExpression?: string   // type='cron': "0 9 * * *"
   scheduledAt?: string      // type='once': ISO 8601
@@ -117,6 +126,12 @@ export interface ElectronAPI {
   onRunnerComplete: (cb: (result: RunnerResult) => void) => void
   removeAllListeners: (channel: string) => void
 
+  // Schedule Folder CRUD
+  listScheduleFolders: () => Promise<ScheduleFolder[]>
+  createScheduleFolder: (data: Omit<ScheduleFolder, 'id' | 'createdAt'>) => Promise<ScheduleFolder>
+  deleteScheduleFolder: (id: string) => Promise<void>
+  renameScheduleFolder: (id: string, name: string) => Promise<ScheduleFolder>
+
   // Schedule CRUD
   listSchedules: () => Promise<Schedule[]>
   createSchedule: (data: Omit<Schedule, 'id' | 'createdAt' | 'nextRunAt'>) => Promise<Schedule>
@@ -125,6 +140,7 @@ export interface ElectronAPI {
   toggleSchedule: (id: string, enabled: boolean) => Promise<Schedule>
   getScheduleLogs: (scheduleId: string, limit?: number) => Promise<ScheduleLog[]>
   runScheduleNow: (scheduleId: string) => Promise<ScheduleLog | null>
+  moveSchedule: (id: string, targetFolderId: string) => Promise<Schedule>
 
   // Settings
   getSettings: () => Promise<AppSettings>

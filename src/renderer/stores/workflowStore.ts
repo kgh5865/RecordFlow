@@ -308,6 +308,6 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     const { folders, workflows } = get()
     // schedules는 Main 프로세스에서 merge하므로 빈 배열로 전달
     // (main/index.ts의 storage:save 핸들러가 기존 schedules를 보존)
-    await window.electronAPI.saveStorage({ version: '1.0', folders, workflows, schedules: [] })
+    await window.electronAPI.saveStorage({ version: '1.0', folders, workflows, schedules: [], scheduleFolders: [] })
   }
 }))
