@@ -76,6 +76,10 @@ export function ScheduleDetail() {
           workflowId: log.workflowId
         })
       }
+      // 실행 후 로그 갱신
+      useScheduleStore.getState().loadLogs(schedule.id)
+    } catch (err) {
+      setRunError(String(err))
     } finally {
       setRunningNow(false)
     }

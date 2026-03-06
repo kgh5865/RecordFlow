@@ -77,6 +77,7 @@ function createSetupWindow(): BrowserWindow {
     <div style="font-size:24px;font-weight:700;margin-bottom:8px">RecordFlow</div>
     <div style="font-size:14px;margin-bottom:4px">Playwright Chromium 설치 중...</div>
     <div style="font-size:12px;opacity:0.5">처음 실행 시 한 번만 진행됩니다 (~170 MB)</div>
+    <div id="msg" style="font-size:11px;opacity:0.4;margin-top:8px;max-width:360px;word-break:break-all"></div>
   </div>
 </body>
 </html>`)
@@ -147,11 +148,32 @@ app.whenReady().then(async () => {
   if (!installed) {
     const setupWin = createSetupWindow()
     try {
-      await installChromium((msg) => process.stdout.write('[setup] ' + msg))
+      await installChromium((msg) => {
+        process.stdout.write('[setup] ' + msg)
+        // 셋업 창에 진행 상황 표시
+        if (setupWin && !setupWin.isDestroyed()) {
+          setupWin.webContents.executeJavaScript(
+            `document.getElementById('msg').textContent = ${JSON.stringify(msg.trim().slice(0, 80))}`
+          ).catch(() => {})
+        }
+      })
     } catch (err) {
       console.error('[setup] Chromium 설치 실패:', err)
+      await dialog.showMessageBox({
+        type: 'error',
+        title: 'Chromium 설치 실패',
+        message: 'Playwright Chromium 브라우저 설치에 실패했습니다.\n네트워크 연결을 확인하고 앱을 다시 실행해 주세요.',
+        detail: String(err)
+      })
     }
-    setupWin.close()
+    if (!setupWin.isDestroyed()) setupWin.close()
+
+    // 설치 후 재확인
+    const nowInstalled = await isChromiumInstalled()
+    if (!nowInstalled) {
+      app.quit()
+      return
+    }
   }
 
   createWindow()
