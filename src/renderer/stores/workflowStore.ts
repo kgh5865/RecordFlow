@@ -310,8 +310,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   persistToStorage: async () => {
     const { folders, workflows } = get()
-    // schedules는 Main 프로세스에서 merge하므로 빈 배열로 전달
-    // (main/index.ts의 storage:save 핸들러가 기존 schedules를 보존)
-    await window.electronAPI.saveStorage({ version: '1.0', folders, workflows, schedules: [], scheduleFolders: [] })
+    // schedules/scheduleFolders는 scheduleStore가 개별 IPC로 관리하므로 전달하지 않음
+    // → storage:save 핸들러의 ?? 연산자가 기존 스케줄 데이터를 보존
+    await window.electronAPI.saveStorage({ version: '1.0', folders, workflows } as StorageData)
   }
 }))

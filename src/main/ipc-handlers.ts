@@ -39,6 +39,7 @@ export function registerIpcHandlers(
       await saveStorage({
         ...existing,
         ...data,
+        // workflowStore.persistToStorage는 스케줄을 관리하지 않으므로 기존 데이터 보존
         schedules: data.schedules ?? existing.schedules ?? [],
         scheduleFolders: data.scheduleFolders ?? existing.scheduleFolders ?? []
       })
