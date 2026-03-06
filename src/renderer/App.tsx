@@ -7,25 +7,19 @@ import { useSettingsStore } from './stores/settingsStore'
 import { useIpc } from './hooks/useIpc'
 
 export default function App() {
-  const loadFromStorage = useWorkflowStore((s) => s.loadFromStorage)
-  const loadSchedules = useScheduleStore((s) => s.loadSchedules)
-  const loadScheduleFolders = useScheduleStore((s) => s.loadScheduleFolders)
-  const loadSettings = useSettingsStore((s) => s.loadSettings)
-  const applyRunEvent = useScheduleStore((s) => s.applyRunEvent)
-
   useIpc()
 
   useEffect(() => {
-    loadFromStorage()
-    loadSchedules()
-    loadScheduleFolders()
-    loadSettings()
+    useWorkflowStore.getState().loadFromStorage()
+    useScheduleStore.getState().loadSchedules()
+    useScheduleStore.getState().loadScheduleFolders()
+    useSettingsStore.getState().loadSettings()
 
     // 스케줄 실행 이벤트 구독 (Main → Renderer 푸시)
     window.electronAPI.onScheduleRunEvent((log) => {
-      applyRunEvent(log)
+      useScheduleStore.getState().applyRunEvent(log)
     })
-  }, [loadFromStorage, loadSchedules, loadScheduleFolders, loadSettings, applyRunEvent])
+  }, [])
 
   return (
     <ErrorBoundary>

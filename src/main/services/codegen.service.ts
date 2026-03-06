@@ -2,8 +2,8 @@ import { spawn } from 'child_process'
 import type { ChildProcess } from 'child_process'
 import { tmpdir } from 'os'
 import { join, dirname } from 'path'
-import { existsSync, unlinkSync } from 'fs'
-import { readFile } from 'fs/promises'
+import { existsSync } from 'fs'
+import { readFile, unlink } from 'fs/promises'
 import { createRequire } from 'module'
 import type { BrowserWindow } from 'electron'
 import { parse } from './parser.service'
@@ -55,7 +55,7 @@ export function startCodegen(win: BrowserWindow, url: string): void {
       try {
         const tsCode = await readFile(tmpFile, 'utf-8')
         const steps = parse(tsCode)
-        try { unlinkSync(tmpFile) } catch { /* 임시파일 삭제 실패는 무시 */ }
+        unlink(tmpFile).catch(() => { /* 임시파일 삭제 실패는 무시 */ })
         win.webContents.send('codegen:complete', steps)
       } catch (err) {
         win.webContents.send('codegen:error', `Parse error: ${String(err)}`)

@@ -152,8 +152,10 @@ app.whenReady().then(async () => {
         process.stdout.write('[setup] ' + msg)
         // 셋업 창에 진행 상황 표시
         if (setupWin && !setupWin.isDestroyed()) {
+          // 특수문자 제거 후 길이 제한하여 안전하게 표시
+          const sanitized = msg.trim().slice(0, 80).replace(/[<>"'&]/g, '')
           setupWin.webContents.executeJavaScript(
-            `document.getElementById('msg').textContent = ${JSON.stringify(msg.trim().slice(0, 80))}`
+            `document.getElementById('msg').textContent = ${JSON.stringify(sanitized)}`
           ).catch(() => {})
         }
       })

@@ -14,6 +14,8 @@ const DEFAULT_DATA: StorageData = {
 }
 
 let _cache: StorageData | null = null
+// 동시 IPC 요청으로 인한 race condition 방지용 쓰기 lock
+let _writeLock: Promise<void> = Promise.resolve()
 
 export function loadStorage(): StorageData {
   if (_cache) return _cache
@@ -24,6 +26,15 @@ export function loadStorage(): StorageData {
 }
 
 export async function saveStorage(data: StorageData): Promise<void> {
-  _cache = data
-  await saveSecureAsync(DATA_FILE, data)
+  // 이전 쓰기가 완료될 때까지 대기 (race condition 방지)
+  const prev = _writeLock
+  let resolve: () => void
+  _writeLock = new Promise<void>((r) => { resolve = r })
+  await prev
+  try {
+    _cache = data
+    await saveSecureAsync(DATA_FILE, data)
+  } finally {
+    resolve!()
+  }
 }

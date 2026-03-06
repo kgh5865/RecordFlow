@@ -3,7 +3,12 @@ import { useUiStore } from '../../stores/uiStore'
 import { useScheduleStore } from '../../stores/scheduleStore'
 
 export function Toolbar() {
-  const { settingsPanelOpen, setSettingsPanelOpen, openDialog, showToast, toast, clearToast } = useUiStore()
+  const settingsPanelOpen = useUiStore((s) => s.settingsPanelOpen)
+  const setSettingsPanelOpen = useUiStore((s) => s.setSettingsPanelOpen)
+  const openDialog = useUiStore((s) => s.openDialog)
+  const showToast = useUiStore((s) => s.showToast)
+  const toast = useUiStore((s) => s.toast)
+  const clearToast = useUiStore((s) => s.clearToast)
   const schedules = useScheduleStore((s) => s.schedules)
 
   const activeScheduleCount = schedules.filter((s) => s.enabled).length
@@ -44,6 +49,7 @@ export function Toolbar() {
             onClick={handleImport}
             className="px-3 py-1 text-xs rounded bg-[#3c3c3c] hover:bg-[#4a4a4a] text-[#cccccc] transition-colors"
             title="워크플로우 파일 가져오기 (.rfworkflow)"
+            aria-label="워크플로우 가져오기"
           >
             ↑ Import
           </button>
@@ -56,6 +62,7 @@ export function Toolbar() {
                 : 'text-[#888] hover:text-[#ccc] hover:bg-[#3c3c3c]'
             }`}
             title="설정"
+            aria-label="설정 열기"
           >
             ⚙ Setup
           </button>
@@ -72,7 +79,7 @@ export function Toolbar() {
           }`}
         >
           <span>{toast.message}</span>
-          <button onClick={clearToast} className="ml-4 opacity-60 hover:opacity-100">✕</button>
+          <button onClick={clearToast} className="ml-4 opacity-60 hover:opacity-100" aria-label="알림 닫기">✕</button>
         </div>
       )}
     </div>

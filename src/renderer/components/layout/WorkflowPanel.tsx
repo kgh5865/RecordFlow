@@ -94,7 +94,7 @@ import { EditValueDialog } from '../dialogs/EditValueDialog'
 import { NewScheduleFolderDialog } from '../dialogs/NewScheduleFolderDialog'
 
 function Dialogs() {
-  const { dialog } = useUiStore()
+  const dialog = useUiStore((s) => s.dialog)
   if (!dialog.type) return null
 
   if (dialog.type === 'new-folder') return <NewFolderDialog />

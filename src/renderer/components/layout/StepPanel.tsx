@@ -7,7 +7,11 @@ import { ConfirmDialog } from '../dialogs/ConfirmDialog'
 import { ReRecordDialog } from '../dialogs/ReRecordDialog'
 
 export function StepPanel() {
-  const { selectedWorkflowId, runningWorkflowId, setRunning, dialog, openDialog } = useUiStore()
+  const selectedWorkflowId = useUiStore((s) => s.selectedWorkflowId)
+  const runningWorkflowId = useUiStore((s) => s.runningWorkflowId)
+  const setRunning = useUiStore((s) => s.setRunning)
+  const dialog = useUiStore((s) => s.dialog)
+  const openDialog = useUiStore((s) => s.openDialog)
   const workflows = useWorkflowStore((s) => s.workflows)
   const deleteWorkflow = useWorkflowStore((s) => s.deleteWorkflow)
   const dirtyWorkflowIds = useWorkflowStore((s) => s.dirtyWorkflowIds)

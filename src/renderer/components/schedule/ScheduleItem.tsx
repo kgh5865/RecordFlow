@@ -1,6 +1,7 @@
 import { memo, useState } from 'react'
 import { useScheduleStore } from '../../stores/scheduleStore'
 import { useWorkflowStore } from '../../stores/workflowStore'
+import { formatKoreanDateTime } from '../../utils/dateUtils'
 import type { Schedule } from '../../../types/workflow.types'
 
 interface ScheduleItemProps {
@@ -11,9 +12,7 @@ interface ScheduleItemProps {
 
 function formatCron(s: Schedule): string {
   if (s.type === 'once' && s.scheduledAt) {
-    return new Date(s.scheduledAt).toLocaleString('ko-KR', {
-      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    }) + ' (1회)'
+    return formatKoreanDateTime(s.scheduledAt) + ' (1회)'
   }
   const expr = s.cronExpression ?? ''
   // Human-readable labels for common patterns
@@ -35,9 +34,7 @@ function formatCron(s: Schedule): string {
 function formatNextRun(s: Schedule): string {
   if (!s.enabled) return '비활성'
   if (s.type === 'once' && s.scheduledAt) {
-    return new Date(s.scheduledAt).toLocaleString('ko-KR', {
-      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    })
+    return formatKoreanDateTime(s.scheduledAt)
   }
   if (!s.nextRunAt) return '-'
   const d = new Date(s.nextRunAt)
@@ -48,7 +45,7 @@ function formatNextRun(s: Schedule): string {
   if (diffMin < 60) return `${diffMin}분 후`
   const diffH = Math.floor(diffMin / 60)
   if (diffH < 24) return `${diffH}시간 후`
-  return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return formatKoreanDateTime(d)
 }
 
 export const ScheduleItem = memo(function ScheduleItem({ schedule, isSelected, onSelect }: ScheduleItemProps) {

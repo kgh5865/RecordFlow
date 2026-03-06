@@ -124,7 +124,7 @@ async function executeStep(page: Page, step: WorkflowStep, folderVars: FolderVar
 }
 
 // locator 표현식에 허용되지 않는 패턴 (코드 인젝션 방지)
-const LOCATOR_FORBIDDEN = [/\beval\b/, /\bFunction\b/, /\brequire\b/, /\bimport\b/, /\bprocess\b/, /\bglobal\b/, /;/, /\n/]
+const LOCATOR_FORBIDDEN = [/\beval\b/, /\bFunction\b/, /\brequire\b/, /\bimport\b/, /\bprocess\b/, /\bglobal\b/, /\bconstructor\b/, /\b__proto__\b/, /\bprototype\b/, /\bthis\b/, /;/, /\n/]
 
 // rawLine에서 locator 체인 부분을 추출하여 실행
 // e.g. "page.getByRole('button', { name: '...' }).click()" → page.getByRole(...)
@@ -175,6 +175,11 @@ async function resolveValue(value: string, folderVars: FolderVariable[] = []): P
       return v.value
     }
   )
+
+  // 순환 참조 감지: 치환 결과에 {{var:...}} 패턴이 남아있으면 경고 (무한 루프 방지)
+  if (/\{\{var:\s*.+?\s*\}\}/.test(resolved)) {
+    console.warn(`[runner] 폴더 변수 순환 참조 감지: "${value}" → "${resolved}"`)
+  }
 
   // {{otp:name}} 패턴 — 전체 값 매칭만 지원
   const otpMatch = resolved.match(/^\{\{otp:\s*(.+?)\s*\}\}$/)

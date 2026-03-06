@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { memo, useState, useRef, useEffect } from 'react'
 import { ActionBadge } from './ActionBadge'
 import { useUiStore } from '../../stores/uiStore'
 import type { WorkflowStep } from '../../../types/workflow.types'
@@ -177,7 +177,7 @@ interface Props {
   scheduleMode?: boolean
 }
 
-export function StepRow({ step, workflowId, isActive, isFirst, isLast, onMoveUp, onMoveDown, onDelete, onEditSelector, scheduleMode }: Props) {
+export const StepRow = memo(function StepRow({ step, workflowId, isActive, isFirst, isLast, onMoveUp, onMoveDown, onDelete, onEditSelector, scheduleMode }: Props) {
   const canEditValue = step.action === 'fill' || step.action === 'select'
 
   return (
@@ -217,4 +217,4 @@ export function StepRow({ step, workflowId, isActive, isFirst, isLast, onMoveUp,
       </div>
     </div>
   )
-}
+})

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { useWorkflowStore } from '../../stores/workflowStore'
 import { useUiStore } from '../../stores/uiStore'
 import { StepRow } from './StepRow'
@@ -9,9 +9,13 @@ interface Props {
   workflow: Workflow
 }
 
-export function StepList({ workflow }: Props) {
-  const { moveStepUp, moveStepDown, deleteStep, updateStep } = useWorkflowStore()
-  const { runningWorkflowId, currentStepIndex } = useUiStore()
+export const StepList = memo(function StepList({ workflow }: Props) {
+  const moveStepUp = useWorkflowStore((s) => s.moveStepUp)
+  const moveStepDown = useWorkflowStore((s) => s.moveStepDown)
+  const deleteStep = useWorkflowStore((s) => s.deleteStep)
+  const updateStep = useWorkflowStore((s) => s.updateStep)
+  const runningWorkflowId = useUiStore((s) => s.runningWorkflowId)
+  const currentStepIndex = useUiStore((s) => s.currentStepIndex)
   const [helpOpen, setHelpOpen] = useState(false)
 
   const isThisRunning = runningWorkflowId === workflow.id
@@ -122,4 +126,4 @@ export function StepList({ workflow }: Props) {
       </div>
     </div>
   )
-}
+})

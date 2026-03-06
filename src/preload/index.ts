@@ -81,6 +81,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   moveSchedule: (id: string, targetFolderId: string): Promise<Schedule> =>
     ipcRenderer.invoke('schedule:move', id, targetFolderId),
 
+  validateScheduleCron: (expression: string): Promise<boolean> =>
+    ipcRenderer.invoke('schedule:validate-cron', expression),
+
   // Settings
   getSettings: (): Promise<AppSettings> =>
     ipcRenderer.invoke('settings:get'),

@@ -5,8 +5,13 @@ import { ScheduleFolderItem } from './ScheduleFolderItem'
 import { ScheduleDialog } from './ScheduleDialog'
 
 export function SchedulePanel() {
-  const { scheduleFolders, schedules, selectedScheduleId, selectSchedule } = useScheduleStore()
-  const { selectedScheduleFolderId, selectScheduleFolder, openDialog } = useUiStore()
+  const scheduleFolders = useScheduleStore((s) => s.scheduleFolders)
+  const schedules = useScheduleStore((s) => s.schedules)
+  const selectedScheduleId = useScheduleStore((s) => s.selectedScheduleId)
+  const selectSchedule = useScheduleStore((s) => s.selectSchedule)
+  const selectedScheduleFolderId = useUiStore((s) => s.selectedScheduleFolderId)
+  const selectScheduleFolder = useUiStore((s) => s.selectScheduleFolder)
+  const openDialog = useUiStore((s) => s.openDialog)
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const activeCount = schedules.filter((s) => s.enabled).length

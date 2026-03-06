@@ -1,5 +1,5 @@
 import { dialog } from 'electron'
-import { readFile, writeFile } from 'fs/promises'
+import { readFile, writeFile, stat } from 'fs/promises'
 import type { Workflow, WorkflowStep, WorkflowStepExport, WorkflowExportFile } from '../../types/workflow.types'
 import { detectSensitive } from '../../types/sensitive'
 
@@ -88,6 +88,13 @@ export async function loadWorkflowFromFile(): Promise<{
   if (canceled || filePaths.length === 0) return { cancelled: true }
 
   try {
+    // 파일 크기 제한: 10MB 초과 시 거부 (DoS 방지)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024
+    const fileStat = await stat(filePaths[0])
+    if (fileStat.size > MAX_FILE_SIZE) {
+      return { cancelled: false, error: '파일 크기가 10MB를 초과합니다.' }
+    }
+
     const content = await readFile(filePaths[0], 'utf-8')
     const parsed = JSON.parse(content) as unknown
 

@@ -34,11 +34,15 @@ function LogRow({ log }: { log: ScheduleLog }) {
 }
 
 export function ScheduleDetail() {
-  const {
-    schedules, selectedScheduleId, logs, toggleSchedule,
-    updateScheduleStepSelector, moveScheduleStepUp, moveScheduleStepDown,
-    deleteScheduleStep, saveScheduleSteps
-  } = useScheduleStore()
+  const schedules = useScheduleStore((s) => s.schedules)
+  const selectedScheduleId = useScheduleStore((s) => s.selectedScheduleId)
+  const logs = useScheduleStore((s) => s.logs)
+  const toggleSchedule = useScheduleStore((s) => s.toggleSchedule)
+  const updateScheduleStepSelector = useScheduleStore((s) => s.updateScheduleStepSelector)
+  const moveScheduleStepUp = useScheduleStore((s) => s.moveScheduleStepUp)
+  const moveScheduleStepDown = useScheduleStore((s) => s.moveScheduleStepDown)
+  const deleteScheduleStep = useScheduleStore((s) => s.deleteScheduleStep)
+  const saveScheduleSteps = useScheduleStore((s) => s.saveScheduleSteps)
   const workflows = useWorkflowStore((s) => s.workflows)
   const [runningNow, setRunningNow] = useState(false)
   const [runError, setRunError] = useState('')
