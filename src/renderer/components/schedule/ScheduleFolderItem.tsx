@@ -3,6 +3,7 @@ import { useUiStore } from '../../stores/uiStore'
 import { useScheduleStore } from '../../stores/scheduleStore'
 import { ScheduleItem } from './ScheduleItem'
 import { ConfirmDialog } from '../dialogs/ConfirmDialog'
+import { ScheduleDialog } from './ScheduleDialog'
 import type { ScheduleFolder, Schedule } from '../../../types/workflow.types'
 
 interface Props {
@@ -28,6 +29,7 @@ export const ScheduleFolderItem = memo(function ScheduleFolderItem({ folder, sch
 
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [pendingDelete, setPendingDelete] = useState(false)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
 
   const childFolders = allFolders.filter((f) => f.parentId === folder.id)
 
@@ -105,20 +107,35 @@ export const ScheduleFolderItem = memo(function ScheduleFolderItem({ folder, sch
         </div>
       )}
 
+      {addDialogOpen && (
+        <ScheduleDialog
+          defaultFolderId={folder.id}
+          onClose={() => setAddDialogOpen(false)}
+        />
+      )}
+
       {menu && (
         <ContextMenuInline
           x={menu.x}
           y={menu.y}
           items={[
             {
-              label: '이름 변경',
+              label: '+ New Schedule',
+              onClick: () => {
+                setMenu(null)
+                selectScheduleFolder(folder.id)
+                setAddDialogOpen(true)
+              }
+            },
+            {
+              label: 'Rename',
               onClick: () => {
                 setMenu(null)
                 openDialog({ type: 'rename-schedule-folder', targetFolderId: folder.id, currentName: folder.name })
               }
             },
             {
-              label: '폴더 삭제',
+              label: 'Delete Folder',
               danger: true,
               onClick: () => { setMenu(null); setPendingDelete(true) }
             }

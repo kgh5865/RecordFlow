@@ -52,7 +52,15 @@ export function SchedulePanel() {
             <div className="text-[10px]">"+ 추가"로 스케줄을 등록하세요</div>
           </div>
         ) : (
-          <div className="py-1">
+          <div
+            className="py-1"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                selectScheduleFolder(null)
+                selectSchedule(null)
+              }
+            }}
+          >
             {rootFolders.map((folder) => (
               <ScheduleFolderItem
                 key={folder.id}
