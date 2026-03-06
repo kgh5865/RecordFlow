@@ -6,7 +6,7 @@ import { ScheduleDialog } from './ScheduleDialog'
 
 export function SchedulePanel() {
   const { scheduleFolders, schedules, selectedScheduleId, selectSchedule } = useScheduleStore()
-  const { selectedScheduleFolderId, openDialog } = useUiStore()
+  const { selectedScheduleFolderId, selectScheduleFolder, openDialog } = useUiStore()
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const activeCount = schedules.filter((s) => s.enabled).length
@@ -36,7 +36,15 @@ export function SchedulePanel() {
       </div>
 
       {/* 폴더 트리 + 목록 */}
-      <div className="flex-1 overflow-y-auto">
+      <div
+        className="flex-1 overflow-y-auto"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            selectScheduleFolder(null)
+            selectSchedule(null)
+          }
+        }}
+      >
         {scheduleFolders.length === 0 && schedules.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-[#555] text-xs text-center px-4">
             <div className="mb-1">등록된 스케줄이 없습니다</div>
