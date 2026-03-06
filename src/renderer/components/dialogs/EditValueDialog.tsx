@@ -34,6 +34,7 @@ export function EditValueDialog() {
         stepId={dialog.stepId}
         step={dialog.step}
         otpProfiles={otpProfiles}
+        scheduleId={dialog.scheduleId}
         updateStep={(scheduleId, stepId, patch) => {
           updateScheduleStep(scheduleId, stepId, patch)
           saveScheduleSteps(scheduleId)
@@ -52,6 +53,7 @@ function EditValueDialogInner({
   stepId,
   step,
   otpProfiles,
+  scheduleId,
   updateStep,
   closeDialog
 }: {
@@ -59,9 +61,18 @@ function EditValueDialogInner({
   stepId: string
   step: import('../../../types/workflow.types').WorkflowStep
   otpProfiles: import('../../../types/workflow.types').OtpProfile[]
+  scheduleId?: string
   updateStep: (wid: string, sid: string, patch: Partial<import('../../../types/workflow.types').WorkflowStep>) => void
   closeDialog: () => void
 }) {
+  // 스케줄 모드일 때 해당 폴더의 변수 목록 조회
+  const folderVariables = useScheduleStore((s) => {
+    if (!scheduleId) return []
+    const schedule = s.schedules.find((sc) => sc.id === scheduleId)
+    if (!schedule) return []
+    const folder = s.scheduleFolders.find((f) => f.id === schedule.folderId)
+    return folder?.variables ?? []
+  })
   const [draft, setDraft] = useState(step.value ?? '')
   const [showSensitive, setShowSensitive] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -119,6 +130,18 @@ function EditValueDialogInner({
         setDraft(template)
       } else {
         insertAtCursor(template)
+      }
+    },
+    [isOtpValue, insertAtCursor]
+  )
+
+  const insertVar = useCallback(
+    (key: string) => {
+      const token = `{{var:${key}}}`
+      if (isOtpValue) {
+        setDraft(token)
+      } else {
+        insertAtCursor(token)
       }
     },
     [isOtpValue, insertAtCursor]
@@ -243,6 +266,39 @@ function EditValueDialogInner({
               </div>
               <div className="text-[9px] text-[#555]">
                 OTP 선택 시 전체 값이 OTP 토큰으로 대체됩니다.
+              </div>
+            </div>
+          )}
+
+          {/* 폴더 변수 */}
+          {folderVariables.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-semibold text-[#e8a050] uppercase tracking-wider flex items-center gap-1">
+                폴더 변수
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {folderVariables.map((v) => {
+                  const token = `{{var:${v.key}}}`
+                  const isActive = draft.includes(token)
+                  return (
+                    <button
+                      key={v.key}
+                      onClick={() => insertVar(v.key)}
+                      className={`flex items-center gap-1 px-2 py-0.5 text-[10px] rounded border transition-colors ${
+                        isActive
+                          ? 'border-[#e8a050] text-[#e8a050] bg-[#2f2a1a]'
+                          : 'border-[#e8a050]/30 text-[#e8a050]/70 hover:border-[#e8a050] hover:bg-[#2f2a1a]'
+                      }`}
+                      title={v.isSensitive ? `${v.key} (민감 정보)` : `${v.key} = ${v.value}`}
+                    >
+                      <span className="text-[9px]">{v.isSensitive ? '\uD83D\uDD12' : '\uD83D\uDCCC'}</span>
+                      {v.key}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="text-[9px] text-[#555]">
+                클릭하면 {'{{var:키}}'} 형태로 삽입됩니다. 폴더 우클릭 &gt; Variables에서 관리합니다.
               </div>
             </div>
           )}

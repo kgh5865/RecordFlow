@@ -102,7 +102,8 @@ function ValueEditor({ step, canEditValue, workflowId, scheduleMode }: ValueEdit
 
   const otpMatch = parseOtp(step.value ?? '')
   const hasDateVars = step.value ? /\{\{date:[^}]+\}\}/.test(step.value) : false
-  const isMasked = step.isSensitive && !otpMatch && !hasDateVars
+  const hasFolderVars = step.value ? /\{\{var:[^}]+\}\}/.test(step.value) : false
+  const isMasked = step.isSensitive && !otpMatch && !hasDateVars && !hasFolderVars
 
   if (canEditValue) {
     return (
@@ -119,6 +120,11 @@ function ValueEditor({ step, canEditValue, workflowId, scheduleMode }: ValueEdit
         ) : hasDateVars ? (
           <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[#1a2f2a] border border-[#4ec9b0]/50 text-[#4ec9b0] text-[10px] rounded hover:border-[#4ec9b0] transition-colors">
             <span>&#x1F4C5;</span>
+            <span className="font-medium">{truncateValue(step.value ?? '')}</span>
+          </span>
+        ) : hasFolderVars ? (
+          <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[#2f2a1a] border border-[#e8a050]/50 text-[#e8a050] text-[10px] rounded hover:border-[#e8a050] transition-colors">
+            <span>&#x1F4CC;</span>
             <span className="font-medium">{truncateValue(step.value ?? '')}</span>
           </span>
         ) : isMasked && step.value ? (
