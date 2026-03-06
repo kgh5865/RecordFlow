@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useScheduleStore } from '../../stores/scheduleStore'
 import { useWorkflowStore } from '../../stores/workflowStore'
 import { useUiStore } from '../../stores/uiStore'
-import { StepList } from '../steps/StepList'
+import { StepRow } from '../steps/StepRow'
 import { ScheduleDialog } from './ScheduleDialog'
 import type { ScheduleLog } from '../../../types/workflow.types'
 
@@ -34,7 +34,11 @@ function LogRow({ log }: { log: ScheduleLog }) {
 }
 
 export function ScheduleDetail() {
-  const { schedules, selectedScheduleId, logs, toggleSchedule } = useScheduleStore()
+  const {
+    schedules, selectedScheduleId, logs, toggleSchedule,
+    updateScheduleStepSelector, moveScheduleStepUp, moveScheduleStepDown,
+    deleteScheduleStep, saveScheduleSteps
+  } = useScheduleStore()
   const workflows = useWorkflowStore((s) => s.workflows)
   const [runningNow, setRunningNow] = useState(false)
   const [runError, setRunError] = useState('')
@@ -53,9 +57,10 @@ export function ScheduleDetail() {
 
   const workflow = workflows.find((w) => w.id === schedule.workflowId)
   const scheduleLogs = logs[schedule.id] ?? []
+  const steps = schedule.steps ?? []
 
   const handleRunNow = async () => {
-    if (!workflow || workflow.steps.length === 0) {
+    if (steps.length === 0) {
       setRunError('실행할 step이 없습니다.')
       return
     }
@@ -64,7 +69,6 @@ export function ScheduleDetail() {
     try {
       const log = await window.electronAPI.runScheduleNow(schedule.id)
       if (log && !log.success) {
-        // 실패 시에만 결과 모달 표시
         useUiStore.getState().setRunResult({
           success: false,
           error: log.error,
@@ -92,21 +96,19 @@ export function ScheduleDetail() {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {workflow && (
-            <div className="flex flex-col items-end gap-0.5">
-              <button
-                onClick={handleRunNow}
-                disabled={runningNow || workflow.steps.length === 0}
-                className="px-2 py-0.5 text-xs rounded bg-[#2ea043] hover:bg-[#3fb950] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                title="지금 실행"
-              >
-                {runningNow ? '실행 중...' : '▶ 지금 실행'}
-              </button>
-              {runError && (
-                <span className="text-[10px] text-red-400">{runError}</span>
-              )}
-            </div>
-          )}
+          <div className="flex flex-col items-end gap-0.5">
+            <button
+              onClick={handleRunNow}
+              disabled={runningNow || steps.length === 0}
+              className="px-2 py-0.5 text-xs rounded bg-[#2ea043] hover:bg-[#3fb950] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title="지금 실행"
+            >
+              {runningNow ? '실행 중...' : '▶ 지금 실행'}
+            </button>
+            {runError && (
+              <span className="text-[10px] text-red-400">{runError}</span>
+            )}
+          </div>
           <button
             onClick={() => setEditDialogOpen(true)}
             className="text-[10px] px-2 py-0.5 rounded bg-[#3c3c3c] text-[#cccccc] hover:bg-[#505050] transition-colors"
@@ -136,17 +138,36 @@ export function ScheduleDetail() {
         </div>
       </div>
 
-      {/* Steps */}
-      {workflow ? (
-        <div className="border-b border-[#3c3c3c]" style={{ maxHeight: '50%', overflow: 'hidden' }}>
-          <div className="px-3 py-1.5 text-[10px] text-[#555] bg-[#252526]">워크플로우 steps</div>
-          <StepList workflow={workflow} />
+      {/* Steps — 스케줄 자체 독립 복사본 편집 */}
+      <div className="border-b border-[#3c3c3c]" style={{ maxHeight: '50%', overflow: 'hidden' }}>
+        <div className="px-3 py-1.5 text-[10px] text-[#555] bg-[#252526] flex items-center justify-between">
+          <span>스케줄 steps (개별 편집 가능)</span>
+          <span className="text-[#666]">{steps.length} steps</span>
         </div>
-      ) : (
-        <div className="px-4 py-3 text-[11px] text-[#666] border-b border-[#3c3c3c]">
-          연결된 워크플로우가 삭제되었습니다.
+        <div className="overflow-y-auto" style={{ maxHeight: 'calc(100% - 28px)' }}>
+          {steps.length === 0 ? (
+            <div className="flex items-center justify-center py-8 text-[#555] text-xs">
+              step이 없습니다
+            </div>
+          ) : (
+            steps.map((step, i) => (
+              <StepRow
+                key={step.id}
+                step={step}
+                workflowId={schedule.id}
+                isActive={false}
+                isFirst={i === 0}
+                isLast={i === steps.length - 1}
+                onMoveUp={() => { moveScheduleStepUp(schedule.id, step.id); saveScheduleSteps(schedule.id) }}
+                onMoveDown={() => { moveScheduleStepDown(schedule.id, step.id); saveScheduleSteps(schedule.id) }}
+                onDelete={() => { deleteScheduleStep(schedule.id, step.id); saveScheduleSteps(schedule.id) }}
+                onEditSelector={(val) => { updateScheduleStepSelector(schedule.id, step.id, val); saveScheduleSteps(schedule.id) }}
+                scheduleMode
+              />
+            ))
+          )}
         </div>
-      )}
+      </div>
 
       {/* 실행 이력 */}
       <div className="flex flex-col flex-1 overflow-hidden">

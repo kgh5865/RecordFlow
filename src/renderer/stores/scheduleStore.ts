@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { Schedule, ScheduleFolder, ScheduleLog } from '../../types/workflow.types'
+import type { Schedule, ScheduleFolder, ScheduleLog, WorkflowStep } from '../../types/workflow.types'
+import { normalizeSelector, rebuildRawLine } from '../utils/selectorUtils'
 
 interface ScheduleState {
   scheduleFolders: ScheduleFolder[]
@@ -20,6 +21,15 @@ interface ScheduleState {
   deleteSchedule: (id: string) => Promise<void>
   toggleSchedule: (id: string, enabled: boolean) => Promise<void>
   moveSchedule: (id: string, targetFolderId: string) => Promise<void>
+
+  // Schedule Step 편집 (독립 복사본)
+  updateScheduleStep: (scheduleId: string, stepId: string, patch: Partial<WorkflowStep>) => void
+  updateScheduleStepSelector: (scheduleId: string, stepId: string, newValue: string) => void
+  moveScheduleStepUp: (scheduleId: string, stepId: string) => void
+  moveScheduleStepDown: (scheduleId: string, stepId: string) => void
+  deleteScheduleStep: (scheduleId: string, stepId: string) => void
+  saveScheduleSteps: (scheduleId: string) => Promise<void>
+
   loadLogs: (scheduleId: string) => Promise<void>
   selectSchedule: (id: string | null) => void
   applyRunEvent: (log: ScheduleLog) => void
@@ -111,6 +121,78 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((s) => ({
       schedules: s.schedules.map((sc) => (sc.id === id ? updated : sc))
     }))
+  },
+
+  // --- Schedule Step 편집 ---
+
+  updateScheduleStep: (scheduleId, stepId, patch) => {
+    set((s) => ({
+      schedules: s.schedules.map((sc) => {
+        if (sc.id !== scheduleId) return sc
+        return { ...sc, steps: sc.steps.map((st) => st.id === stepId ? { ...st, ...patch } : st) }
+      })
+    }))
+  },
+
+  updateScheduleStepSelector: (scheduleId, stepId, newValue) => {
+    set((s) => ({
+      schedules: s.schedules.map((sc) => {
+        if (sc.id !== scheduleId) return sc
+        return {
+          ...sc,
+          steps: sc.steps.map((st) => {
+            if (st.id !== stepId) return st
+            if (st.action === 'navigate' || (st.action === 'expect' && st.url)) {
+              return { ...st, url: newValue.trim(), rawLine: rebuildRawLine(st, undefined, newValue.trim()) }
+            }
+            const normalized = normalizeSelector(newValue)
+            return { ...st, selector: normalized, rawLine: rebuildRawLine(st, normalized) }
+          })
+        }
+      })
+    }))
+  },
+
+  moveScheduleStepUp: (scheduleId, stepId) => {
+    set((s) => ({
+      schedules: s.schedules.map((sc) => {
+        if (sc.id !== scheduleId) return sc
+        const idx = sc.steps.findIndex((st) => st.id === stepId)
+        if (idx <= 0) return sc
+        const steps = [...sc.steps]
+        ;[steps[idx - 1], steps[idx]] = [steps[idx], steps[idx - 1]]
+        return { ...sc, steps: steps.map((st, i) => ({ ...st, order: i })) }
+      })
+    }))
+  },
+
+  moveScheduleStepDown: (scheduleId, stepId) => {
+    set((s) => ({
+      schedules: s.schedules.map((sc) => {
+        if (sc.id !== scheduleId) return sc
+        const idx = sc.steps.findIndex((st) => st.id === stepId)
+        if (idx < 0 || idx >= sc.steps.length - 1) return sc
+        const steps = [...sc.steps]
+        ;[steps[idx], steps[idx + 1]] = [steps[idx + 1], steps[idx]]
+        return { ...sc, steps: steps.map((st, i) => ({ ...st, order: i })) }
+      })
+    }))
+  },
+
+  deleteScheduleStep: (scheduleId, stepId) => {
+    set((s) => ({
+      schedules: s.schedules.map((sc) => {
+        if (sc.id !== scheduleId) return sc
+        const filtered = sc.steps.filter((st) => st.id !== stepId)
+        return { ...sc, steps: filtered.map((st, i) => ({ ...st, order: i })) }
+      })
+    }))
+  },
+
+  saveScheduleSteps: async (scheduleId) => {
+    const schedule = get().schedules.find((sc) => sc.id === scheduleId)
+    if (!schedule) return
+    await window.electronAPI.updateSchedule(scheduleId, { steps: schedule.steps })
   },
 
   loadLogs: async (scheduleId) => {

@@ -99,26 +99,30 @@ async function executeSchedule(scheduleId: string): Promise<void> {
   const schedule = storage.schedules.find((s) => s.id === scheduleId)
   if (!schedule || !schedule.enabled) return
 
+  // 스케줄 자체 steps 사용 (독립 복사본)
+  const steps = schedule.steps ?? []
+  if (steps.length === 0) return
+
   const workflow = storage.workflows.find((w) => w.id === schedule.workflowId)
-  if (!workflow) return
+  const workflowName = workflow?.name ?? '(삭제된 워크플로우)'
 
   runningSet.add(scheduleId)
   const startedAt = new Date().toISOString()
 
   try {
-    const result = await runWorkflow(null, workflow.steps, { headless: true })
+    const result = await runWorkflow(null, steps, { headless: true })
     const finishedAt = new Date().toISOString()
 
     const log: ScheduleLog = {
       id: randomUUID(),
       scheduleId,
-      workflowId: workflow.id,
-      workflowName: workflow.name,
+      workflowId: schedule.workflowId,
+      workflowName,
       startedAt,
       finishedAt,
       success: result.success,
       completedSteps: result.completedSteps,
-      totalSteps: workflow.steps.length,
+      totalSteps: steps.length,
       error: result.error
     }
 
@@ -182,26 +186,30 @@ export async function runScheduleNow(scheduleId: string): Promise<ScheduleLog | 
   const schedule = storage.schedules.find((s) => s.id === scheduleId)
   if (!schedule) return null
 
+  // 스케줄 자체 steps 사용 (독립 복사본)
+  const steps = schedule.steps ?? []
+  if (steps.length === 0) return null
+
   const workflow = storage.workflows.find((w) => w.id === schedule.workflowId)
-  if (!workflow || workflow.steps.length === 0) return null
+  const workflowName = workflow?.name ?? '(삭제된 워크플로우)'
 
   runningSet.add(scheduleId)
   const startedAt = new Date().toISOString()
 
   try {
-    const result = await runWorkflow(null, workflow.steps, { headless: true })
+    const result = await runWorkflow(null, steps, { headless: true })
     const finishedAt = new Date().toISOString()
 
     const log: ScheduleLog = {
       id: randomUUID(),
       scheduleId,
-      workflowId: workflow.id,
-      workflowName: workflow.name,
+      workflowId: schedule.workflowId,
+      workflowName,
       startedAt,
       finishedAt,
       success: result.success,
       completedSteps: result.completedSteps,
-      totalSteps: workflow.steps.length,
+      totalSteps: steps.length,
       error: result.error
     }
 

@@ -76,6 +76,7 @@ interface ValueEditorProps {
   step: WorkflowStep
   canEditValue: boolean
   workflowId: string
+  scheduleMode?: boolean
 }
 
 const DISPLAY_MAX = 28
@@ -87,12 +88,16 @@ function truncateValue(v: string): string {
 const MASK_CHAR = '\u2022' // •
 const MASKED_DISPLAY = MASK_CHAR.repeat(8)
 
-function ValueEditor({ step, canEditValue, workflowId }: ValueEditorProps) {
+function ValueEditor({ step, canEditValue, workflowId, scheduleMode }: ValueEditorProps) {
   const openDialog = useUiStore((s) => s.openDialog)
 
   const handleClick = () => {
     if (!canEditValue) return
-    openDialog({ type: 'edit-value', workflowId, stepId: step.id, step })
+    if (scheduleMode) {
+      openDialog({ type: 'edit-schedule-value', scheduleId: workflowId, stepId: step.id, step })
+    } else {
+      openDialog({ type: 'edit-value', workflowId, stepId: step.id, step })
+    }
   }
 
   const otpMatch = parseOtp(step.value ?? '')
@@ -163,9 +168,10 @@ interface Props {
   onMoveDown: () => void
   onDelete: () => void
   onEditSelector: (newValue: string) => void
+  scheduleMode?: boolean
 }
 
-export function StepRow({ step, workflowId, isActive, isFirst, isLast, onMoveUp, onMoveDown, onDelete, onEditSelector }: Props) {
+export function StepRow({ step, workflowId, isActive, isFirst, isLast, onMoveUp, onMoveDown, onDelete, onEditSelector, scheduleMode }: Props) {
   const canEditValue = step.action === 'fill' || step.action === 'select'
 
   return (
@@ -177,7 +183,7 @@ export function StepRow({ step, workflowId, isActive, isFirst, isLast, onMoveUp,
       <span className="text-[10px] text-[#555] w-5 text-right shrink-0">{step.order + 1}</span>
       <ActionBadge action={step.action} />
       <SelectorEditor step={step} onEditSelector={onEditSelector} />
-      <ValueEditor step={step} canEditValue={canEditValue} workflowId={workflowId} />
+      <ValueEditor step={step} canEditValue={canEditValue} workflowId={workflowId} scheduleMode={scheduleMode} />
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <button
           onClick={onMoveUp}

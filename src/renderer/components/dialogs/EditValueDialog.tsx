@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useUiStore } from '../../stores/uiStore'
 import { useWorkflowStore } from '../../stores/workflowStore'
+import { useScheduleStore } from '../../stores/scheduleStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { ActionBadge } from '../steps/ActionBadge'
 import { DateVariableHelper } from './DateVariableHelper'
@@ -8,21 +9,41 @@ import { DateVariableHelper } from './DateVariableHelper'
 export function EditValueDialog() {
   const dialog = useUiStore((s) => s.dialog)
   const closeDialog = useUiStore((s) => s.closeDialog)
-  const updateStep = useWorkflowStore((s) => s.updateStep)
+  const updateWorkflowStep = useWorkflowStore((s) => s.updateStep)
+  const updateScheduleStep = useScheduleStore((s) => s.updateScheduleStep)
+  const saveScheduleSteps = useScheduleStore((s) => s.saveScheduleSteps)
   const otpProfiles = useSettingsStore((s) => s.settings.otpProfiles)
 
-  if (dialog.type !== 'edit-value') return null
+  if (dialog.type === 'edit-value') {
+    return (
+      <EditValueDialogInner
+        workflowId={dialog.workflowId}
+        stepId={dialog.stepId}
+        step={dialog.step}
+        otpProfiles={otpProfiles}
+        updateStep={updateWorkflowStep}
+        closeDialog={closeDialog}
+      />
+    )
+  }
 
-  return (
-    <EditValueDialogInner
-      workflowId={dialog.workflowId}
-      stepId={dialog.stepId}
-      step={dialog.step}
-      otpProfiles={otpProfiles}
-      updateStep={updateStep}
-      closeDialog={closeDialog}
-    />
-  )
+  if (dialog.type === 'edit-schedule-value') {
+    return (
+      <EditValueDialogInner
+        workflowId={dialog.scheduleId}
+        stepId={dialog.stepId}
+        step={dialog.step}
+        otpProfiles={otpProfiles}
+        updateStep={(scheduleId, stepId, patch) => {
+          updateScheduleStep(scheduleId, stepId, patch)
+          saveScheduleSteps(scheduleId)
+        }}
+        closeDialog={closeDialog}
+      />
+    )
+  }
+
+  return null
 }
 
 // 내부 컴포넌트: dialog.type 체크 후 렌더링 (hooks 안전 사용)

@@ -16,6 +16,7 @@ export type DialogState =
   | { type: 're-record'; targetWorkflowId: string; workflowName: string }
   | { type: 'new-schedule-folder' }
   | { type: 'rename-schedule-folder'; targetFolderId: string; currentName: string }
+  | { type: 'edit-schedule-value'; scheduleId: string; stepId: string; step: WorkflowStep }
 
 export interface ToastState {
   message: string

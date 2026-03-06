@@ -54,8 +54,9 @@ export type ScheduleType = 'cron' | 'once'
 
 export interface Schedule {
   id: string
-  workflowId: string
+  workflowId: string        // 원본 워크플로우 템플릿 참조 (이름 표시용)
   folderId: string
+  steps: WorkflowStep[]     // 독립 복사본 — 개인별 편집 가능
   type: ScheduleType
   cronExpression?: string   // type='cron': "0 9 * * *"
   scheduledAt?: string      // type='once': ISO 8601

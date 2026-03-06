@@ -83,17 +83,29 @@ export function ScheduleDialog({ onClose, schedule: editTarget, defaultFolderId 
     setSaving(true)
     try {
       if (isEdit) {
-        await updateSchedule(editTarget.id, {
+        // 워크플로우 변경 시 steps도 새로 복사
+        const workflowChanged = editTarget.workflowId !== workflowId
+        const patch: Partial<import('../../../types/workflow.types').Schedule> = {
           workflowId,
           folderId,
           type,
           cronExpression: type === 'cron' ? cronExpression : undefined,
           scheduledAt: type === 'once' ? new Date(scheduledAt).toISOString() : undefined
-        })
+        }
+        if (workflowChanged) {
+          const selectedWf = workflows.find((w) => w.id === workflowId)
+          if (selectedWf) {
+            patch.steps = structuredClone(selectedWf.steps)
+          }
+        }
+        await updateSchedule(editTarget.id, patch)
       } else {
+        // 새 스케줄: 워크플로우 steps 딥카피
+        const selectedWf = workflows.find((w) => w.id === workflowId)
         await createSchedule({
           workflowId,
           folderId,
+          steps: structuredClone(selectedWf?.steps ?? []),
           type,
           cronExpression: type === 'cron' ? cronExpression : undefined,
           scheduledAt: type === 'once' ? new Date(scheduledAt).toISOString() : undefined,

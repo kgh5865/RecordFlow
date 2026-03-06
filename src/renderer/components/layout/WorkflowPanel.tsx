@@ -102,7 +102,7 @@ function Dialogs() {
   if (dialog.type === 'move-workflow') return <MoveWorkflowDialog />
   if (dialog.type === 'rename-folder' || dialog.type === 'rename-workflow' || dialog.type === 'rename-schedule-folder') return <RenameDialog />
   if (dialog.type === 'import-workflow') return <ImportWorkflowDialog />
-  if (dialog.type === 'edit-value') return <EditValueDialog />
+  if (dialog.type === 'edit-value' || dialog.type === 'edit-schedule-value') return <EditValueDialog />
   if (dialog.type === 'new-schedule-folder') return <NewScheduleFolderDialog />
   return null
 }
