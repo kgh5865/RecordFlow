@@ -101,7 +101,7 @@ export const ScheduleFolderItem = memo(function ScheduleFolderItem({ folder, sch
               className="py-1 text-[11px] text-[#555] italic"
               style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }}
             >
-              Empty
+              비어 있음
             </div>
           )}
         </div>

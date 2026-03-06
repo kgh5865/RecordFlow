@@ -23,7 +23,7 @@ export function SchedulePanel() {
       {/* 헤더 */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-[#3c3c3c] shrink-0">
         <span className="text-[11px] text-[#888]">
-          {activeCount > 0 ? `${activeCount} Active` : 'No Schedules'}
+          {activeCount > 0 ? `${activeCount}개 활성` : '스케줄 없음'}
         </span>
         <div className="flex items-center gap-1">
           <button
@@ -48,9 +48,9 @@ export function SchedulePanel() {
             className="flex flex-col items-center justify-center h-full text-[#555] text-xs text-center px-4"
             onClick={handleEmptyClick}
           >
-            <div className="mb-1">No schedules registered</div>
-            <div className="text-[10px]">Create folders with "+ Folder"</div>
-            <div className="text-[10px]">and add schedules with "+ Add"</div>
+            <div className="mb-1">등록된 스케줄이 없습니다</div>
+            <div className="text-[10px]">"+ Folder"로 담당자별 폴더를 만들고</div>
+            <div className="text-[10px]">"+ Add"로 스케줄을 등록하세요</div>
           </div>
         ) : (
           <div className="flex flex-col min-h-full">

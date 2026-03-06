@@ -50,7 +50,7 @@ export function ScheduleDetail() {
   if (!schedule) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#1e1e1e] text-[#666]">
-        <span className="text-sm">Select a schedule from the left</span>
+        <span className="text-sm">좌측에서 스케줄을 선택하세요</span>
       </div>
     )
   }
@@ -61,7 +61,7 @@ export function ScheduleDetail() {
 
   const handleRunNow = async () => {
     if (steps.length === 0) {
-      setRunError('No steps to run.')
+      setRunError('실행할 step이 없습니다.')
       return
     }
     setRunError('')
@@ -92,7 +92,7 @@ export function ScheduleDetail() {
           <span className="text-[10px] text-[#666] mt-0.5">
             {schedule.type === 'cron'
               ? `cron: ${schedule.cronExpression}`
-              : `once: ${schedule.scheduledAt ? new Date(schedule.scheduledAt).toLocaleString('ko-KR') : ''}`}
+              : `1회: ${schedule.scheduledAt ? new Date(schedule.scheduledAt).toLocaleString('ko-KR') : ''}`}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -141,7 +141,7 @@ export function ScheduleDetail() {
       {/* Steps — 스케줄 자체 독립 복사본 편집 */}
       <div className="border-b border-[#3c3c3c]" style={{ maxHeight: '50%', overflow: 'hidden' }}>
         <div className="px-3 py-1.5 text-[10px] text-[#555] bg-[#252526] flex items-center justify-between">
-          <span>Schedule Steps (editable)</span>
+          <span>스케줄 steps (개별 편집 가능)</span>
           <span className="text-[#666]">{steps.length} steps</span>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(100% - 28px)' }}>
@@ -172,12 +172,12 @@ export function ScheduleDetail() {
       {/* 실행 이력 */}
       <div className="flex flex-col flex-1 overflow-hidden">
         <div className="px-3 py-1.5 text-[10px] text-[#555] bg-[#252526] shrink-0">
-          Run History ({scheduleLogs.length})
+          실행 이력 ({scheduleLogs.length}건)
         </div>
         <div className="flex-1 overflow-y-auto">
           {scheduleLogs.length === 0 ? (
             <div className="flex items-center justify-center h-full text-[#555] text-xs">
-              No run history
+              실행 이력이 없습니다
             </div>
           ) : (
             scheduleLogs.map((log) => <LogRow key={log.id} log={log} />)
