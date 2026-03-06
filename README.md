@@ -44,7 +44,7 @@ RecordFlow는 이 두 가지를 모두 해결합니다:
 ### 동적 값 & 보안
 - **날짜 변수** - `{{date:offset:format}}` 패턴으로 동적 날짜 값 자동 입력
 - **OTP 지원** - TOTP 프로필을 등록하여 `{{otp:프로필명}}` 패턴으로 자동 입력
-- **외부 명령어** - `{{cmd:명령어}}` 패턴으로 외부 스크립트 결과를 fill 값으로 사용
+- **폴더 변수** - 스케줄 폴더에 key-value 변수를 등록하고 `{{var:키}}` 패턴으로 스텝 값에 삽입
 - **민감 정보 UI 마스킹** - 비밀번호·민감 필드의 값이 UI에서 `••••••••`로 표시
 - **safeStorage 암호화** - 워크플로우·OTP 데이터를 OS 수준 암호화(Windows DPAPI)로 보호
 
@@ -66,10 +66,10 @@ RecordFlow는 이 두 가지를 모두 해결합니다:
 
 | 템플릿 | 설명 | 예시 |
 |--------|------|------|
-| `{{date:offset:format}}` | 오늘 기준 날짜 | `{{date:0:YYYY-MM-DD}}` → `2026-03-03` |
+| `{{date:offset:format}}` | 오늘 기준 날짜 | `{{date:0:YYYY-MM-DD}}` → `2026-03-07` |
 | `{{date:offset}}` | 기본 포맷(YYYY-MM-DD) | `{{date:-1}}` → 어제 날짜 |
 | `{{otp:프로필명}}` | TOTP 인증 코드 | `{{otp:Google}}` → `482917` |
-| `{{cmd:명령어}}` | 외부 명령 실행 결과 | `{{cmd:echo hello}}` → `hello` |
+| `{{var:키}}` | 스케줄 폴더 변수 값 | `{{var:userId}}` → `user01` |
 
 **날짜 포맷 토큰**: `YYYY`(연), `MM`(월 2자리), `DD`(일 2자리), `M`(월), `D`(일)
 
@@ -181,8 +181,8 @@ npm run dist
 npm run dist
 
 # 2. tag 생성 및 push
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.1
+git push origin main --tags
 ```
 
 3. [GitHub Releases](https://github.com/kgh5865/RecordFlow/releases) → **Draft a new release** → 태그 선택 → `release/RecordFlow Setup x.x.x.exe` 파일 첨부 → **Publish**
@@ -204,7 +204,8 @@ src/
 │   │   ├── setup.service.ts         # Chromium 설치 관리
 │   │   └── workflow-file.service.ts # 워크플로우 내보내기/가져오기
 │   └── utils/
-│       └── json-storage.ts          # JSON 파일 I/O
+│       ├── json-storage.ts          # JSON 파일 I/O
+│       └── secure-storage.ts        # OS 네이티브 암호화 저장소
 ├── preload/
 │   └── index.ts           # contextBridge API
 ├── renderer/              # React UI
@@ -220,9 +221,10 @@ src/
 │   ├── stores/            # Zustand 스토어 (workflow, schedule, settings, ui)
 │   ├── hooks/             # useIpc
 │   ├── services/          # ipc.service
-│   └── utils/             # otpUtils, selectorUtils
+│   └── utils/             # otpUtils, selectorUtils, dateUtils
 └── types/
-    └── workflow.types.ts  # 공유 타입 정의
+    ├── workflow.types.ts  # 공유 타입 정의
+    └── sensitive.ts       # 민감 정보 감지 규칙
 ```
 
 ## 라이선스
