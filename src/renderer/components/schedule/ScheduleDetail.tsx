@@ -50,7 +50,7 @@ export function ScheduleDetail() {
   if (!schedule) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#1e1e1e] text-[#666]">
-        <span className="text-sm">좌측에서 스케줄을 선택하세요</span>
+        <span className="text-sm">Select a schedule from the left</span>
       </div>
     )
   }
@@ -61,7 +61,7 @@ export function ScheduleDetail() {
 
   const handleRunNow = async () => {
     if (steps.length === 0) {
-      setRunError('실행할 step이 없습니다.')
+      setRunError('No steps to run.')
       return
     }
     setRunError('')
@@ -92,7 +92,7 @@ export function ScheduleDetail() {
           <span className="text-[10px] text-[#666] mt-0.5">
             {schedule.type === 'cron'
               ? `cron: ${schedule.cronExpression}`
-              : `1회: ${schedule.scheduledAt ? new Date(schedule.scheduledAt).toLocaleString('ko-KR') : ''}`}
+              : `once: ${schedule.scheduledAt ? new Date(schedule.scheduledAt).toLocaleString('ko-KR') : ''}`}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -101,9 +101,9 @@ export function ScheduleDetail() {
               onClick={handleRunNow}
               disabled={runningNow || steps.length === 0}
               className="px-2 py-0.5 text-xs rounded bg-[#2ea043] hover:bg-[#3fb950] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              title="지금 실행"
+              title="Run Now"
             >
-              {runningNow ? '실행 중...' : '▶ 지금 실행'}
+              {runningNow ? 'Running...' : '▶ Run Now'}
             </button>
             {runError && (
               <span className="text-[10px] text-red-400">{runError}</span>
@@ -112,9 +112,9 @@ export function ScheduleDetail() {
           <button
             onClick={() => setEditDialogOpen(true)}
             className="text-[10px] px-2 py-0.5 rounded bg-[#3c3c3c] text-[#cccccc] hover:bg-[#505050] transition-colors"
-            title="스케줄 수정"
+            title="Edit Schedule"
           >
-            수정
+            Edit Schedule
           </button>
           <button
             onClick={async () => {
@@ -131,9 +131,9 @@ export function ScheduleDetail() {
                 ? 'bg-[#1a3a1a] text-[#4caf50] hover:bg-[#1a4a1a]'
                 : 'bg-[#2a2a2a] text-[#666] hover:bg-[#3a3a3a] hover:text-[#999]'
             }`}
-            title={schedule.enabled ? '비활성화하려면 클릭' : '활성화하려면 클릭'}
+            title={schedule.enabled ? 'Click to disable' : 'Click to enable'}
           >
-            {schedule.enabled ? '활성' : '비활성'}
+            {schedule.enabled ? 'Active' : 'Inactive'}
           </button>
         </div>
       </div>
@@ -141,13 +141,13 @@ export function ScheduleDetail() {
       {/* Steps — 스케줄 자체 독립 복사본 편집 */}
       <div className="border-b border-[#3c3c3c]" style={{ maxHeight: '50%', overflow: 'hidden' }}>
         <div className="px-3 py-1.5 text-[10px] text-[#555] bg-[#252526] flex items-center justify-between">
-          <span>스케줄 steps (개별 편집 가능)</span>
+          <span>Schedule Steps (editable)</span>
           <span className="text-[#666]">{steps.length} steps</span>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(100% - 28px)' }}>
           {steps.length === 0 ? (
             <div className="flex items-center justify-center py-8 text-[#555] text-xs">
-              step이 없습니다
+              No steps
             </div>
           ) : (
             steps.map((step, i) => (
@@ -172,12 +172,12 @@ export function ScheduleDetail() {
       {/* 실행 이력 */}
       <div className="flex flex-col flex-1 overflow-hidden">
         <div className="px-3 py-1.5 text-[10px] text-[#555] bg-[#252526] shrink-0">
-          실행 이력 ({scheduleLogs.length}건)
+          Run History ({scheduleLogs.length})
         </div>
         <div className="flex-1 overflow-y-auto">
           {scheduleLogs.length === 0 ? (
             <div className="flex items-center justify-center h-full text-[#555] text-xs">
-              실행 이력이 없습니다
+              No run history
             </div>
           ) : (
             scheduleLogs.map((log) => <LogRow key={log.id} log={log} />)
