@@ -14,6 +14,7 @@ import {
   runScheduleNow
 } from './services/scheduler.service'
 import { saveWorkflowToFile, loadWorkflowFromFile } from './services/workflow-file.service'
+import { hashFolderPassword, verifyFolderPassword } from './utils/secure-storage'
 import { checkForUpdates, downloadUpdate, quitAndInstall, getCurrentVersion } from './services/updater.service'
 import type { StorageData, WorkflowStep, Schedule, ScheduleFolder, FolderVariable, Workflow } from '../types/workflow.types'
 
@@ -167,6 +168,36 @@ export function registerIpcHandlers(
       console.error('[IPC] schedule-folder:update-variables error:', err)
       throw err
     }
+  })
+
+  // Schedule Folder Password
+  ipcMain.handle('schedule-folder:set-password', async (_event, id: string, password: string) => {
+    if (typeof id !== 'string' || typeof password !== 'string') throw new Error('Invalid params')
+    const storage = loadStorage()
+    const folder = storage.scheduleFolders.find((f) => f.id === id)
+    if (!folder) throw new Error('Folder not found')
+    const { hash, salt } = hashFolderPassword(password)
+    folder.passwordHash = hash
+    folder.passwordSalt = salt
+    await saveStorage(storage)
+  })
+
+  ipcMain.handle('schedule-folder:remove-password', async (_event, id: string) => {
+    if (typeof id !== 'string') throw new Error('Invalid params')
+    const storage = loadStorage()
+    const folder = storage.scheduleFolders.find((f) => f.id === id)
+    if (!folder) throw new Error('Folder not found')
+    delete folder.passwordHash
+    delete folder.passwordSalt
+    await saveStorage(storage)
+  })
+
+  ipcMain.handle('schedule-folder:verify-password', (_event, id: string, password: string) => {
+    if (typeof id !== 'string' || typeof password !== 'string') throw new Error('Invalid params')
+    const storage = loadStorage()
+    const folder = storage.scheduleFolders.find((f) => f.id === id)
+    if (!folder || !folder.passwordHash || !folder.passwordSalt) return false
+    return verifyFolderPassword(password, folder.passwordHash, folder.passwordSalt)
   })
 
   // --- Schedule IPC ---

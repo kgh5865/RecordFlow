@@ -56,6 +56,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateScheduleFolderVariables: (id: string, variables: FolderVariable[]): Promise<ScheduleFolder> =>
     ipcRenderer.invoke('schedule-folder:update-variables', id, variables),
 
+  setFolderPassword: (id: string, password: string): Promise<void> =>
+    ipcRenderer.invoke('schedule-folder:set-password', id, password),
+
+  removeFolderPassword: (id: string): Promise<void> =>
+    ipcRenderer.invoke('schedule-folder:remove-password', id),
+
+  verifyFolderPassword: (id: string, password: string): Promise<boolean> =>
+    ipcRenderer.invoke('schedule-folder:verify-password', id, password),
+
   // Schedule CRUD
   listSchedules: (): Promise<Schedule[]> =>
     ipcRenderer.invoke('schedule:list'),

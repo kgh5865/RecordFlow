@@ -172,3 +172,20 @@ export function hasRecoveryBackup(filePath: string): boolean {
     return false
   }
 }
+
+// ── Folder Password Hashing (PBKDF2) ──
+
+const FOLDER_PW_ITERATIONS = 100_000
+const FOLDER_PW_KEY_LENGTH = 32
+
+export function hashFolderPassword(password: string): { hash: string; salt: string } {
+  const salt = randomBytes(FOLDER_PW_KEY_LENGTH)
+  const hash = pbkdf2Sync(password, salt, FOLDER_PW_ITERATIONS, FOLDER_PW_KEY_LENGTH, 'sha512')
+  return { hash: hash.toString('hex'), salt: salt.toString('hex') }
+}
+
+export function verifyFolderPassword(password: string, hashHex: string, saltHex: string): boolean {
+  const salt = Buffer.from(saltHex, 'hex')
+  const hash = pbkdf2Sync(password, salt, FOLDER_PW_ITERATIONS, FOLDER_PW_KEY_LENGTH, 'sha512')
+  return hash.toString('hex') === hashHex
+}
