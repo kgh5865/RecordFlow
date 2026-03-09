@@ -9,8 +9,20 @@ interface Props {
 }
 
 export function FolderVariablesDialog({ folder, onClose }: Props) {
+  // 민감 변수는 값을 빈 문자열로 마스킹하여 초기화 (원본 노출 방지)
   const [variables, setVariables] = useState<FolderVariable[]>(
-    () => (folder.variables ?? []).map((v) => ({ ...v }))
+    () => (folder.variables ?? []).map((v) => ({
+      ...v,
+      value: v.isSensitive ? '' : v.value
+    }))
+  )
+  // 민감 변수의 원본 값 존재 여부만 추적 (값 자체는 보관하지 않음)
+  const [hasSensitiveOriginal] = useState<Set<string>>(
+    () => new Set(
+      (folder.variables ?? [])
+        .filter((v) => v.isSensitive && v.value)
+        .map((v) => v.key)
+    )
   )
   const [saving, setSaving] = useState(false)
   const { updateScheduleFolderVariables } = useScheduleStore()
@@ -28,7 +40,16 @@ export function FolderVariablesDialog({ folder, onClose }: Props) {
   }
 
   const handleSave = async () => {
-    const valid = variables.filter((v) => v.key.trim())
+    const origMap = new Map((folder.variables ?? []).map((v) => [v.key, v.value]))
+    const valid = variables
+      .filter((v) => v.key.trim())
+      .map((v) => {
+        // 민감 변수에서 값을 새로 입력하지 않은 경우 기존 값 유지
+        if (v.isSensitive && !v.value && origMap.has(v.key)) {
+          return { ...v, value: origMap.get(v.key)! }
+        }
+        return v
+      })
     setSaving(true)
     try {
       await updateScheduleFolderVariables(folder.id, valid)
@@ -81,17 +102,25 @@ export function FolderVariablesDialog({ folder, onClose }: Props) {
                 type={v.isSensitive ? 'password' : 'text'}
                 value={v.value}
                 onChange={(e) => updateVar(i, { value: e.target.value })}
-                placeholder="값"
+                placeholder={v.isSensitive && hasSensitiveOriginal.has(v.key) ? '••••••••  (변경 시 새 값 입력)' : '값'}
                 className="flex-1 !text-xs"
               />
               <button
-                onClick={() => updateVar(i, { isSensitive: !v.isSensitive })}
+                onClick={() => {
+                  // 기존 민감 변수(값이 마스킹된 상태)는 해제 불가
+                  if (v.isSensitive && hasSensitiveOriginal.has(v.key) && !v.value) return
+                  updateVar(i, { isSensitive: !v.isSensitive })
+                }}
                 className={`text-[11px] px-1.5 py-1 rounded shrink-0 transition-colors ${
                   v.isSensitive
                     ? 'bg-[#4a3020] text-[#e8a050]'
                     : 'bg-[#3c3c3c] text-[#888] hover:text-[#ccc]'
-                }`}
-                title={v.isSensitive ? '민감 정보 (마스킹 활성)' : '일반 값'}
+                } ${v.isSensitive && hasSensitiveOriginal.has(v.key) && !v.value ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={
+                  v.isSensitive && hasSensitiveOriginal.has(v.key) && !v.value
+                    ? '민감 정보 보호됨 (새 값 입력 후 해제 가능)'
+                    : v.isSensitive ? '민감 정보 (마스킹 활성)' : '일반 값'
+                }
               >
                 {v.isSensitive ? '🔒' : '🔓'}
               </button>
