@@ -2,6 +2,8 @@ import { safeStorage } from 'electron'
 import { readFileSync, existsSync, mkdirSync, copyFileSync } from 'fs'
 import { writeFile } from 'fs/promises'
 import { dirname } from 'path'
+import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'crypto'
+import { homedir, hostname } from 'os'
 
 /** 암호화 파일 식별 매직 헤더 (6바이트) */
 const ENCRYPTED_HEADER = Buffer.from('RFENC1')
@@ -90,4 +92,83 @@ export async function saveSecureAsync(filePath: string, data: unknown): Promise<
   const encrypted = safeStorage.encryptString(json)
   const output = Buffer.concat([ENCRYPTED_HEADER, encrypted])
   await writeFile(filePath, output)
+}
+
+// ── Recovery Backup (AES-256-GCM + PBKDF2) ──
+
+const RECOVERY_HEADER = Buffer.from('RFREC1')
+const RECOVERY_VERSION = 0x01
+const PBKDF2_ITERATIONS = 310_000
+const KEY_LENGTH = 32
+const IV_LENGTH = 12
+const SALT_LENGTH = 32
+
+function deriveRecoveryKey(salt: Buffer): Buffer {
+  const material = `${homedir()}:${hostname()}`
+  return pbkdf2Sync(material, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha512')
+}
+
+export async function saveRecoveryBackup(filePath: string, data: unknown): Promise<void> {
+  const dir = dirname(filePath)
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+
+  const salt = randomBytes(SALT_LENGTH)
+  const iv = randomBytes(IV_LENGTH)
+  const key = deriveRecoveryKey(salt)
+
+  const json = JSON.stringify(data)
+  const cipher = createCipheriv('aes-256-gcm', key, iv)
+  const encrypted = Buffer.concat([cipher.update(json, 'utf-8'), cipher.final()])
+  const tag = cipher.getAuthTag()
+
+  const output = Buffer.concat([
+    RECOVERY_HEADER,
+    Buffer.from([RECOVERY_VERSION]),
+    salt,
+    iv,
+    tag,
+    encrypted
+  ])
+  await writeFile(filePath, output)
+}
+
+export function loadRecoveryBackup<T>(filePath: string): T | null {
+  try {
+    if (!existsSync(filePath)) return null
+
+    const buf = readFileSync(filePath)
+    const headerLen = RECOVERY_HEADER.length + 1 // header + version byte
+    const minLen = headerLen + SALT_LENGTH + IV_LENGTH + 16 // 16 = auth tag
+    if (buf.length < minLen) return null
+    if (!buf.subarray(0, RECOVERY_HEADER.length).equals(RECOVERY_HEADER)) return null
+    if (buf[RECOVERY_HEADER.length] !== RECOVERY_VERSION) return null
+
+    let offset = headerLen
+    const salt = buf.subarray(offset, offset + SALT_LENGTH); offset += SALT_LENGTH
+    const iv = buf.subarray(offset, offset + IV_LENGTH); offset += IV_LENGTH
+    const tag = buf.subarray(offset, offset + 16); offset += 16
+    const encrypted = buf.subarray(offset)
+
+    const key = deriveRecoveryKey(salt)
+    const decipher = createDecipheriv('aes-256-gcm', key, iv)
+    decipher.setAuthTag(tag)
+    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()])
+    return JSON.parse(decrypted.toString('utf-8')) as T
+  } catch {
+    return null
+  }
+}
+
+export function hasRecoveryBackup(filePath: string): boolean {
+  try {
+    if (!existsSync(filePath)) return false
+    const buf = readFileSync(filePath, { flag: 'r' })
+    return (
+      buf.length >= RECOVERY_HEADER.length + 1 &&
+      buf.subarray(0, RECOVERY_HEADER.length).equals(RECOVERY_HEADER) &&
+      buf[RECOVERY_HEADER.length] === RECOVERY_VERSION
+    )
+  } catch {
+    return false
+  }
 }

@@ -26,7 +26,7 @@ async function decodeQrFromFile(file: File): Promise<string | null> {
 }
 
 export function OtpSection() {
-  const { settings, saveSettings } = useSettingsStore()
+  const { settings, saveSettings, loadSettings } = useSettingsStore()
 
   const [addingOtp, setAddingOtp] = useState(false)
   const [otpName, setOtpName] = useState('')
@@ -36,6 +36,37 @@ export function OtpSection() {
 
   const [migrationEntries, setMigrationEntries] = useState<Array<{ name: string; secret: string }> | null>(null)
   const [selectedMigrationIndices, setSelectedMigrationIndices] = useState<Set<number>>(new Set())
+
+  const [recoveryAvailable, setRecoveryAvailable] = useState(false)
+  const [recovering, setRecovering] = useState(false)
+  const [recoveryMsg, setRecoveryMsg] = useState('')
+
+  useEffect(() => {
+    if (settings.otpProfiles.length === 0) {
+      window.electronAPI.hasSettingsRecovery().then(setRecoveryAvailable).catch(() => {})
+    } else {
+      setRecoveryAvailable(false)
+    }
+  }, [settings.otpProfiles.length])
+
+  const handleRecoverOtp = async () => {
+    setRecovering(true)
+    setRecoveryMsg('')
+    try {
+      const result = await window.electronAPI.recoverOtpProfiles()
+      if (result.success) {
+        await loadSettings()
+        setRecoveryMsg(`${result.profileCount}개의 OTP 프로필이 복구되었습니다.`)
+        setRecoveryAvailable(false)
+      } else {
+        setRecoveryMsg(result.error ?? '복구에 실패했습니다.')
+      }
+    } catch {
+      setRecoveryMsg('복구 중 오류가 발생했습니다.')
+    } finally {
+      setRecovering(false)
+    }
+  }
 
   const handleAddOtp = async () => {
     const name = otpName.trim()
@@ -275,7 +306,31 @@ export function OtpSection() {
       )}
 
       {settings.otpProfiles.length === 0 && !addingOtp && !migrationEntries ? (
-        <div className="text-[11px] text-[#555] italic">등록된 OTP 프로필이 없습니다.</div>
+        <div className="space-y-2">
+          <div className="text-[11px] text-[#555] italic">등록된 OTP 프로필이 없습니다.</div>
+          {recoveryAvailable && (
+            <div className="bg-[#252526] border border-[#3c3c3c] rounded p-3">
+              <div className="text-[11px] text-[#cccccc] mb-2">
+                이전 설치에서 백업된 OTP 프로필이 감지되었습니다.
+              </div>
+              {recoveryMsg && (
+                <div className={`text-[10px] mb-2 ${recoveryMsg.includes('복구되었습니다') ? 'text-green-400' : 'text-red-400'}`}>
+                  {recoveryMsg}
+                </div>
+              )}
+              <button
+                onClick={handleRecoverOtp}
+                disabled={recovering}
+                className="px-3 py-1.5 text-xs rounded bg-[#0e639c] hover:bg-[#1177bb] text-white transition-colors disabled:opacity-50"
+              >
+                {recovering ? '복구 중...' : '🔑 이전 키 복구'}
+              </button>
+            </div>
+          )}
+          {!recoveryAvailable && recoveryMsg && (
+            <div className="text-[10px] text-green-400">{recoveryMsg}</div>
+          )}
+        </div>
       ) : (
         <div className="space-y-1">
           {settings.otpProfiles.map((profile) => (

@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto'
 import { loadStorage, saveStorage } from './services/storage.service'
 import { startCodegen, stopCodegen } from './services/codegen.service'
 import { runWorkflow } from './services/runner.service'
-import { loadSettings, saveSettings } from './services/settings.service'
+import { loadSettings, saveSettings, hasSettingsRecovery, recoverOtpProfiles } from './services/settings.service'
 import {
   registerSchedule,
   unregisterSchedule,
@@ -338,6 +338,34 @@ export function registerIpcHandlers(
     } catch (err) {
       console.error('[IPC] settings:save error:', err)
       throw err
+    }
+  })
+
+  ipcMain.handle('settings:has-recovery', () => {
+    try {
+      return hasSettingsRecovery()
+    } catch (err) {
+      console.error('[IPC] settings:has-recovery error:', err)
+      return false
+    }
+  })
+
+  ipcMain.handle('settings:recover-otp', async () => {
+    try {
+      const result = recoverOtpProfiles()
+      if (!result.success) return result
+
+      // 현재 설정에 복구된 프로필 병합 후 저장
+      const current = loadSettings()
+      const existingIds = new Set(current.otpProfiles.map((p) => p.name))
+      const newProfiles = result.profiles.filter((p) => !existingIds.has(p.name))
+      const merged = { ...current, otpProfiles: [...current.otpProfiles, ...newProfiles] }
+      await saveSettings(merged)
+
+      return { success: true, profileCount: newProfiles.length }
+    } catch (err) {
+      console.error('[IPC] settings:recover-otp error:', err)
+      return { success: false, profileCount: 0, error: '복구 중 오류가 발생했습니다.' }
     }
   })
 

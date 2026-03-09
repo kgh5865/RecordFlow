@@ -91,6 +91,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveSettings: (settings: AppSettings): Promise<void> =>
     ipcRenderer.invoke('settings:save', settings),
 
+  // Settings Recovery
+  hasSettingsRecovery: (): Promise<boolean> =>
+    ipcRenderer.invoke('settings:has-recovery'),
+
+  recoverOtpProfiles: (): Promise<{ success: boolean; profileCount?: number; error?: string }> =>
+    ipcRenderer.invoke('settings:recover-otp'),
+
   // Scheduler push events
   onScheduleRunEvent: (cb: (log: ScheduleLog) => void): void => {
     ipcRenderer.on('schedule:run-event', (_event, log) => cb(log))
