@@ -46,6 +46,7 @@
       "icon": "resources/icon.ico",
       "sign": false
     },
+    "artifactName": "${productName}-Setup-${version}.${ext}",
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
