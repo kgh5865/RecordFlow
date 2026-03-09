@@ -55,6 +55,8 @@ export interface ScheduleFolder {
   parentId?: string
   createdAt: string
   variables?: FolderVariable[]
+  passwordHash?: string
+  passwordSalt?: string
 }
 
 export type ScheduleType = 'cron' | 'once'
@@ -140,6 +142,9 @@ export interface ElectronAPI {
   deleteScheduleFolder: (id: string) => Promise<void>
   renameScheduleFolder: (id: string, name: string) => Promise<ScheduleFolder>
   updateScheduleFolderVariables: (id: string, variables: FolderVariable[]) => Promise<ScheduleFolder>
+  setFolderPassword: (id: string, password: string) => Promise<void>
+  removeFolderPassword: (id: string) => Promise<void>
+  verifyFolderPassword: (id: string, password: string) => Promise<boolean>
 
   // Schedule CRUD
   listSchedules: () => Promise<Schedule[]>
