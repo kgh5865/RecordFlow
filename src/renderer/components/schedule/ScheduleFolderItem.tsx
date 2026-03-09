@@ -4,8 +4,12 @@ import { useScheduleStore } from '../../stores/scheduleStore'
 import { ScheduleItem } from './ScheduleItem'
 import { ConfirmDialog } from '../dialogs/ConfirmDialog'
 import { FolderVariablesDialog } from '../dialogs/FolderVariablesDialog'
+import { FolderPasswordDialog } from '../dialogs/FolderPasswordDialog'
 import { ScheduleDialog } from './ScheduleDialog'
 import type { ScheduleFolder, Schedule } from '../../../types/workflow.types'
+
+// 세션 내 인증된 폴더 ID 캐시 (앱 종료 시 초기화)
+const authenticatedFolders = new Set<string>()
 
 interface Props {
   folder: ScheduleFolder
@@ -23,7 +27,7 @@ export const ScheduleFolderItem = memo(function ScheduleFolderItem({ folder, sch
     selectScheduleFolder,
     openDialog
   } = useUiStore()
-  const { selectedScheduleId, selectSchedule, deleteScheduleFolder } = useScheduleStore()
+  const { selectedScheduleId, selectSchedule, deleteScheduleFolder, loadScheduleFolders } = useScheduleStore()
 
   const isExpanded = expandedScheduleFolderIds.includes(folder.id)
   const isSelected = selectedScheduleFolderId === folder.id
@@ -32,8 +36,44 @@ export const ScheduleFolderItem = memo(function ScheduleFolderItem({ folder, sch
   const [pendingDelete, setPendingDelete] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [varsDialogOpen, setVarsDialogOpen] = useState(false)
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState<'verify' | 'set' | null>(null)
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
 
   const childFolders = allFolders.filter((f) => f.parentId === folder.id)
+
+  const hasPassword = !!(folder.passwordHash && folder.passwordSalt)
+
+  const requirePassword = (action: () => void) => {
+    if (!hasPassword || authenticatedFolders.has(folder.id)) {
+      action()
+      return
+    }
+    setPendingAction(() => action)
+    setPasswordDialogOpen('verify')
+  }
+
+  const handleVerifyPassword = async (password: string): Promise<boolean> => {
+    const ok = await window.electronAPI.verifyFolderPassword(folder.id, password)
+    if (ok) {
+      authenticatedFolders.add(folder.id)
+      pendingAction?.()
+      setPendingAction(null)
+      setPasswordDialogOpen(null)
+    }
+    return ok
+  }
+
+  const handleSetPassword = async (password: string | null) => {
+    if (password === null) {
+      await window.electronAPI.removeFolderPassword(folder.id)
+      authenticatedFolders.delete(folder.id)
+    } else {
+      await window.electronAPI.setFolderPassword(folder.id, password)
+      authenticatedFolders.add(folder.id)
+    }
+    await loadScheduleFolders()
+    setPasswordDialogOpen(null)
+  }
 
   const handleClick = () => {
     toggleScheduleFolder(folder.id)
@@ -61,6 +101,7 @@ export const ScheduleFolderItem = memo(function ScheduleFolderItem({ folder, sch
           {isExpanded ? '▼' : '▶'}
         </span>
         <span className="text-[#dcb67a] mr-1">📁</span>
+        {hasPassword && <span className="text-[10px] text-[#e8a050]" title="암호 보호됨">🔒</span>}
         <span className="text-[13px] text-[#cccccc] truncate flex-1">{folder.name}</span>
         {(folder.variables?.length ?? 0) > 0 && (
           <span className="text-[9px] text-[#888] bg-[#333] px-1 rounded" title="폴더 변수 설정됨">
@@ -128,6 +169,17 @@ export const ScheduleFolderItem = memo(function ScheduleFolderItem({ folder, sch
         />
       )}
 
+      {passwordDialogOpen && (
+        <FolderPasswordDialog
+          mode={passwordDialogOpen}
+          folderName={folder.name}
+          hasExistingPassword={hasPassword}
+          onVerify={handleVerifyPassword}
+          onSet={handleSetPassword}
+          onClose={() => { setPasswordDialogOpen(null); setPendingAction(null) }}
+        />
+      )}
+
       {menu && (
         <ContextMenuInline
           x={menu.x}
@@ -137,28 +189,44 @@ export const ScheduleFolderItem = memo(function ScheduleFolderItem({ folder, sch
               label: '+ New Schedule',
               onClick: () => {
                 setMenu(null)
-                selectScheduleFolder(folder.id)
-                setAddDialogOpen(true)
+                requirePassword(() => {
+                  selectScheduleFolder(folder.id)
+                  setAddDialogOpen(true)
+                })
               }
             },
             {
               label: `Variables${folder.variables?.length ? ` (${folder.variables.length})` : ''}`,
               onClick: () => {
                 setMenu(null)
-                setVarsDialogOpen(true)
+                requirePassword(() => setVarsDialogOpen(true))
               }
             },
             {
               label: 'Rename',
               onClick: () => {
                 setMenu(null)
-                openDialog({ type: 'rename-schedule-folder', targetFolderId: folder.id, currentName: folder.name })
+                requirePassword(() => openDialog({ type: 'rename-schedule-folder', targetFolderId: folder.id, currentName: folder.name }))
+              }
+            },
+            {
+              label: hasPassword ? '🔑 암호 변경' : '🔒 암호 설정',
+              onClick: () => {
+                setMenu(null)
+                if (hasPassword) {
+                  requirePassword(() => setPasswordDialogOpen('set'))
+                } else {
+                  setPasswordDialogOpen('set')
+                }
               }
             },
             {
               label: 'Delete Folder',
               danger: true,
-              onClick: () => { setMenu(null); setPendingDelete(true) }
+              onClick: () => {
+                setMenu(null)
+                requirePassword(() => setPendingDelete(true))
+              }
             }
           ]}
           onClose={() => setMenu(null)}
