@@ -14,12 +14,13 @@
   },
   "dependencies": {
     "@playwright/test": "^1.49.0",
-    "playwright": "^1.49.0",
-    "playwright-core": "^1.49.0",
     "cron-parser": "^4.9.0",
+    "electron-updater": "^6.8.3",
     "jsqr": "^1.4.0",
     "node-cron": "^3.0.3",
     "otplib": "^13.3.0",
+    "playwright": "^1.49.0",
+    "playwright-core": "^1.49.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^4.5.5"
@@ -64,6 +65,11 @@
     "asarUnpack": [
       "node_modules/playwright/**",
       "node_modules/playwright-core/**"
-    ]
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "kgh5865",
+      "repo": "RecordFlow"
+    }
   }
 }

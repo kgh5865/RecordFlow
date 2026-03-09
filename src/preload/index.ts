@@ -102,4 +102,37 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   importWorkflow: (): Promise<{ cancelled: boolean; file?: WorkflowExportFile; error?: string }> =>
     ipcRenderer.invoke('workflow:import'),
+
+  // Updater
+  checkForUpdates: (): Promise<void> =>
+    ipcRenderer.invoke('updater:check'),
+
+  downloadUpdate: (): Promise<void> =>
+    ipcRenderer.invoke('updater:download'),
+
+  installUpdate: (): Promise<void> =>
+    ipcRenderer.invoke('updater:install'),
+
+  getAppVersion: (): Promise<string> =>
+    ipcRenderer.invoke('updater:get-version'),
+
+  onUpdateAvailable: (cb: (info: { version: string; releaseNotes?: string; releaseDate?: string }) => void): void => {
+    ipcRenderer.on('updater:update-available', (_event, info) => cb(info))
+  },
+
+  onUpdateNotAvailable: (cb: () => void): void => {
+    ipcRenderer.on('updater:update-not-available', () => cb())
+  },
+
+  onDownloadProgress: (cb: (progress: { percent: number; transferred: number; total: number }) => void): void => {
+    ipcRenderer.on('updater:download-progress', (_event, progress) => cb(progress))
+  },
+
+  onUpdateDownloaded: (cb: () => void): void => {
+    ipcRenderer.on('updater:update-downloaded', () => cb())
+  },
+
+  onUpdateError: (cb: (err: string) => void): void => {
+    ipcRenderer.on('updater:error', (_event, err) => cb(err))
+  },
 })

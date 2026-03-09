@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { AppLayout } from './components/layout/AppLayout'
+import { UpdateNotification } from './components/layout/UpdateNotification'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useWorkflowStore } from './stores/workflowStore'
 import { useScheduleStore } from './stores/scheduleStore'
@@ -24,6 +25,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AppLayout />
+      <UpdateNotification />
     </ErrorBoundary>
   )
 }

@@ -14,6 +14,7 @@ import {
   runScheduleNow
 } from './services/scheduler.service'
 import { saveWorkflowToFile, loadWorkflowFromFile } from './services/workflow-file.service'
+import { checkForUpdates, downloadUpdate, quitAndInstall, getCurrentVersion } from './services/updater.service'
 import type { StorageData, WorkflowStep, Schedule, ScheduleFolder, FolderVariable, Workflow } from '../types/workflow.types'
 
 export function registerIpcHandlers(
@@ -358,5 +359,23 @@ export function registerIpcHandlers(
       console.error('[IPC] workflow:import error:', err)
       throw err
     }
+  })
+
+  // --- Updater IPC ---
+
+  ipcMain.handle('updater:check', () => {
+    checkForUpdates()
+  })
+
+  ipcMain.handle('updater:download', () => {
+    downloadUpdate()
+  })
+
+  ipcMain.handle('updater:install', () => {
+    quitAndInstall()
+  })
+
+  ipcMain.handle('updater:get-version', () => {
+    return getCurrentVersion()
   })
 }

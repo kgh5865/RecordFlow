@@ -11,6 +11,7 @@ import {
   setMainWindow
 } from './services/scheduler.service'
 import { registerIpcHandlers } from './ipc-handlers'
+import { initAutoUpdater } from './services/updater.service'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -196,6 +197,7 @@ app.whenReady().then(async () => {
   }
   if (mainWindow) {
     initScheduler(mainWindow, storage.schedules)
+    initAutoUpdater(mainWindow)
   }
 
   app.on('activate', () => {
