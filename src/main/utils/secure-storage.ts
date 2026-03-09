@@ -2,7 +2,7 @@ import { safeStorage } from 'electron'
 import { readFileSync, existsSync, mkdirSync, copyFileSync } from 'fs'
 import { writeFile } from 'fs/promises'
 import { dirname } from 'path'
-import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'crypto'
+import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes, timingSafeEqual } from 'crypto'
 import { homedir, hostname } from 'os'
 
 /** 암호화 파일 식별 매직 헤더 (6바이트) */
@@ -187,5 +187,7 @@ export function hashFolderPassword(password: string): { hash: string; salt: stri
 export function verifyFolderPassword(password: string, hashHex: string, saltHex: string): boolean {
   const salt = Buffer.from(saltHex, 'hex')
   const hash = pbkdf2Sync(password, salt, FOLDER_PW_ITERATIONS, FOLDER_PW_KEY_LENGTH, 'sha512')
-  return hash.toString('hex') === hashHex
+  const expected = Buffer.from(hashHex, 'hex')
+  if (hash.length !== expected.length) return false
+  return timingSafeEqual(hash, expected)
 }

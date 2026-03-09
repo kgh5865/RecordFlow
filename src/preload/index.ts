@@ -1,6 +1,20 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { StorageData, WorkflowStep, RunnerResult, Schedule, ScheduleFolder, FolderVariable, ScheduleLog, AppSettings, Workflow, WorkflowExportFile } from '../types/workflow.types'
 
+// removeAllListeners에서 허용하는 채널 화이트리스트
+const ALLOWED_LISTENER_CHANNELS = new Set([
+  'codegen:complete',
+  'codegen:error',
+  'runner:step-update',
+  'runner:complete',
+  'schedule:run-event',
+  'updater:update-available',
+  'updater:update-not-available',
+  'updater:download-progress',
+  'updater:update-downloaded',
+  'updater:error'
+])
+
 contextBridge.exposeInMainWorld('electronAPI', {
   // Storage
   loadStorage: (): Promise<StorageData> =>
@@ -37,7 +51,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   removeAllListeners: (channel: string): void => {
-    ipcRenderer.removeAllListeners(channel)
+    if (ALLOWED_LISTENER_CHANNELS.has(channel)) {
+      ipcRenderer.removeAllListeners(channel)
+    }
   },
 
   // Schedule Folder CRUD

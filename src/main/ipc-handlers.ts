@@ -18,6 +18,14 @@ import { hashFolderPassword, verifyFolderPassword } from './utils/secure-storage
 import { checkForUpdates, downloadUpdate, quitAndInstall, getCurrentVersion } from './services/updater.service'
 import type { StorageData, WorkflowStep, Schedule, ScheduleFolder, FolderVariable, Workflow } from '../types/workflow.types'
 
+// 입력값 길이/개수 제한 상수
+const MAX_NAME_LENGTH = 255
+const MAX_VARIABLES = 100
+const MAX_VARIABLE_KEY_LENGTH = 255
+const MAX_VARIABLE_VALUE_LENGTH = 10_000
+const MAX_PASSWORD_LENGTH = 1024
+const MAX_OTP_PROFILES = 50
+
 export function registerIpcHandlers(
   getMainWindow: () => BrowserWindow | null,
   setupTray: () => void,
@@ -101,6 +109,12 @@ export function registerIpcHandlers(
 
   ipcMain.handle('schedule-folder:create', async (_event, data: Omit<ScheduleFolder, 'id' | 'createdAt'>) => {
     try {
+      if (!data || typeof data.name !== 'string' || !data.name.trim() || data.name.length > MAX_NAME_LENGTH) {
+        throw new Error('Invalid folder name')
+      }
+      if (data.variables && (!Array.isArray(data.variables) || data.variables.length > MAX_VARIABLES)) {
+        throw new Error('Invalid variables')
+      }
       const storage = loadStorage()
       const folder: ScheduleFolder = {
         ...data,
@@ -142,6 +156,7 @@ export function registerIpcHandlers(
   ipcMain.handle('schedule-folder:rename', async (_event, id: string, name: string) => {
     try {
       if (typeof id !== 'string' || !id) throw new Error('Invalid id parameter')
+      if (typeof name !== 'string' || !name.trim() || name.length > MAX_NAME_LENGTH) throw new Error('Invalid name parameter')
       const storage = loadStorage()
       const idx = storage.scheduleFolders.findIndex((f) => f.id === id)
       if (idx === -1) throw new Error('Schedule folder not found')
@@ -157,7 +172,11 @@ export function registerIpcHandlers(
   ipcMain.handle('schedule-folder:update-variables', async (_event, id: string, variables: FolderVariable[]) => {
     try {
       if (typeof id !== 'string' || !id) throw new Error('Invalid id parameter')
-      if (!Array.isArray(variables)) throw new Error('Invalid variables parameter')
+      if (!Array.isArray(variables) || variables.length > MAX_VARIABLES) throw new Error('Invalid variables parameter')
+      for (const v of variables) {
+        if (typeof v.key !== 'string' || v.key.length > MAX_VARIABLE_KEY_LENGTH) throw new Error('Invalid variable key')
+        if (typeof v.value !== 'string' || v.value.length > MAX_VARIABLE_VALUE_LENGTH) throw new Error('Invalid variable value')
+      }
       const storage = loadStorage()
       const idx = storage.scheduleFolders.findIndex((f) => f.id === id)
       if (idx === -1) throw new Error('Schedule folder not found')
@@ -173,6 +192,7 @@ export function registerIpcHandlers(
   // Schedule Folder Password
   ipcMain.handle('schedule-folder:set-password', async (_event, id: string, password: string) => {
     if (typeof id !== 'string' || typeof password !== 'string') throw new Error('Invalid params')
+    if (!password || password.length > MAX_PASSWORD_LENGTH) throw new Error('Invalid password length')
     const storage = loadStorage()
     const folder = storage.scheduleFolders.find((f) => f.id === id)
     if (!folder) throw new Error('Folder not found')
@@ -360,6 +380,15 @@ export function registerIpcHandlers(
 
   ipcMain.handle('settings:save', async (_event, settings) => {
     try {
+      if (!settings || typeof settings !== 'object') throw new Error('Invalid settings')
+      if (typeof settings.backgroundMode !== 'boolean') throw new Error('Invalid backgroundMode')
+      if (!Array.isArray(settings.otpProfiles)) throw new Error('Invalid otpProfiles')
+      if (settings.otpProfiles.length > MAX_OTP_PROFILES) throw new Error('Too many OTP profiles')
+      for (const p of settings.otpProfiles) {
+        if (typeof p.id !== 'string' || typeof p.name !== 'string' || typeof p.secret !== 'string') {
+          throw new Error('Invalid OTP profile')
+        }
+      }
       await saveSettings(settings)
       if (settings.backgroundMode) {
         setupTray()

@@ -109,9 +109,14 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
-  // 외부 링크는 기본 브라우저로 열기
+  // 외부 링크는 기본 브라우저로 열기 (http/https만 허용)
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        shell.openExternal(url)
+      }
+    } catch { /* 무효 URL 무시 */ }
     return { action: 'deny' }
   })
 
@@ -166,7 +171,7 @@ app.whenReady().then(async () => {
         type: 'error',
         title: 'Chromium 설치 실패',
         message: 'Playwright Chromium 브라우저 설치에 실패했습니다.\n네트워크 연결을 확인하고 앱을 다시 실행해 주세요.',
-        detail: String(err)
+        detail: err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.'
       })
     }
     if (!setupWin.isDestroyed()) setupWin.close()
