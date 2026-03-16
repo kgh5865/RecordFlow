@@ -13,6 +13,21 @@ import {
 import { registerIpcHandlers } from './ipc-handlers'
 import { initAutoUpdater } from './services/updater.service'
 
+// --- Single Instance Lock ---
+// 다중 인스턴스 실행 방지: 두 번째 앱 실행 시 기존 창을 포커스
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      if (!mainWindow.isVisible()) mainWindow.show()
+      mainWindow.focus()
+    }
+  })
+}
+
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 
