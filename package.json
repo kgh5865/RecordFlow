@@ -1,6 +1,6 @@
 {
   "name": "recordflow",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Playwright Codegen GUI",
   "main": "out/main/index.js",
   "scripts": {
