@@ -20,6 +20,10 @@ export default function App() {
     window.electronAPI.onScheduleRunEvent((log) => {
       useScheduleStore.getState().applyRunEvent(log)
     })
+
+    return () => {
+      window.electronAPI.removeAllListeners('schedule:run-event')
+    }
   }, [])
 
   return (

@@ -125,6 +125,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Scheduler push events
   onScheduleRunEvent: (cb: (log: ScheduleLog) => void): void => {
+    ipcRenderer.removeAllListeners('schedule:run-event')
     ipcRenderer.on('schedule:run-event', (_event, log) => cb(log))
   },
 
