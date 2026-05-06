@@ -81,21 +81,21 @@ async function executeStep(page: Page, step: WorkflowStep, folderVars: FolderVar
       break
 
     case 'click': {
-      const locator = resolveFromRaw(page, step.rawLine, /\.click\(/)
+      const locator = resolveFromRaw(page, step.rawLine, /\.click\(/, step.selector)
       await locator.click()
       break
     }
 
     case 'fill': {
       const fillValue = step.value != null ? await resolveValue(step.value, folderVars) : ''
-      const locator = resolveFromRaw(page, step.rawLine, /\.fill\(/)
+      const locator = resolveFromRaw(page, step.rawLine, /\.fill\(/, step.selector)
       await locator.fill(fillValue)
       break
     }
 
     case 'select': {
       const selectValue = step.value != null ? await resolveValue(step.value, folderVars) : ''
-      const locator = resolveFromRaw(page, step.rawLine, /\.selectOption\(/)
+      const locator = resolveFromRaw(page, step.rawLine, /\.selectOption\(/, step.selector)
       await locator.selectOption(selectValue)
       break
     }
@@ -113,7 +113,7 @@ async function executeStep(page: Page, step: WorkflowStep, folderVars: FolderVar
     case 'press': {
       const key = step.value ?? 'Enter'
       if (step.selector) {
-        const locator = resolveFromRaw(page, step.rawLine, /\.press\(/)
+        const locator = resolveFromRaw(page, step.rawLine, /\.press\(/, step.selector)
         await locator.press(key)
       } else {
         await page.keyboard.press(key)
@@ -129,12 +129,20 @@ const LOCATOR_FORBIDDEN = [/\beval\b/, /\bFunction\b/, /\brequire\b/, /\bimport\
 // rawLine에서 locator 체인 부분을 추출하여 실행
 // e.g. "page.getByRole('button', { name: '...' }).click()" → page.getByRole(...)
 // e.g. "page.locator('a').filter({ hasText: '...' }).first().click()" → page.locator('a').filter(...).first()
-function resolveFromRaw(page: Page, rawLine: string | undefined, actionPattern: RegExp): Locator {
-  if (!rawLine) throw new Error('rawLine이 없습니다. 워크플로우를 다시 녹화해주세요.')
+// rawLine이 없는 경우(export 시 마스킹된 민감 스텝) selector 폴백 사용
+function resolveFromRaw(page: Page, rawLine: string | undefined, actionPattern: RegExp, selectorFallback?: string): Locator {
+  let locatorExpr: string
 
-  // rawLine에서 action 부분(.click(), .fill('...') 등) 제거하여 locator 체인만 추출
-  const actionIdx = rawLine.search(actionPattern)
-  const locatorExpr = actionIdx > 0 ? rawLine.substring(0, actionIdx) : rawLine
+  if (rawLine) {
+    // rawLine에서 action 부분(.click(), .fill('...') 등) 제거하여 locator 체인만 추출
+    const actionIdx = rawLine.search(actionPattern)
+    locatorExpr = actionIdx > 0 ? rawLine.substring(0, actionIdx) : rawLine
+  } else if (selectorFallback) {
+    // rawLine 없을 때: selector 앞에 page. 을 붙여 locator 표현식 구성
+    locatorExpr = `page.${selectorFallback}`
+  } else {
+    throw new Error('rawLine이 없습니다. 워크플로우를 다시 녹화해주세요.')
+  }
 
   // 허용 패턴 검증: page. 로 시작 + 금지 키워드 없음
   if (!locatorExpr.trimStart().startsWith('page.')) {
