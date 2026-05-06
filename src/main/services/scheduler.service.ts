@@ -22,6 +22,34 @@ const onceTimers = new Map<string, ReturnType<typeof setTimeout>>()
 // Prevents concurrent execution of the same schedule
 const runningSet = new Set<string>()
 
+// Serial execution queue — prevents simultaneous Chromium launches
+class ExecutionQueue {
+  private running = 0
+  private readonly maxConcurrency: number
+  private readonly queue: Array<() => void> = []
+
+  constructor(maxConcurrency = 1) {
+    this.maxConcurrency = maxConcurrency
+  }
+
+  enqueue(task: () => Promise<void>): void {
+    const run = async () => {
+      this.running++
+      try { await task() }
+      finally { this.running--; this.drain() }
+    }
+    if (this.running < this.maxConcurrency) run()
+    else this.queue.push(run)
+  }
+
+  private drain(): void {
+    const next = this.queue.shift()
+    if (next) next()
+  }
+}
+
+const executionQueue = new ExecutionQueue(1)
+
 let mainWin: BrowserWindow | null = null
 
 export function initScheduler(win: BrowserWindow, schedules: Schedule[]): void {
@@ -44,7 +72,7 @@ export function registerSchedule(schedule: Schedule): void {
   if (schedule.type === 'cron' && schedule.cronExpression) {
     if (!cron.validate(schedule.cronExpression)) return
     const task = cron.schedule(schedule.cronExpression, () => {
-      executeSchedule(schedule.id).catch(console.error)
+      executionQueue.enqueue(() => executeSchedule(schedule.id))
     })
     cronTasks.set(schedule.id, task)
 
@@ -53,7 +81,7 @@ export function registerSchedule(schedule: Schedule): void {
     if (delay <= 0) return
     // setTimeout max ~24.8 days; sufficient for typical scheduling use
     const timer = setTimeout(() => {
-      executeSchedule(schedule.id).catch(console.error)
+      executionQueue.enqueue(() => executeSchedule(schedule.id))
     }, Math.min(delay, 2_147_483_647))
     onceTimers.set(schedule.id, timer)
   }
@@ -155,6 +183,22 @@ async function executeSchedule(scheduleId: string): Promise<void> {
     }
   } catch (err) {
     console.error('[Scheduler] Execution error for schedule', scheduleId, err)
+    const failLog: ScheduleLog = {
+      id: randomUUID(),
+      scheduleId,
+      workflowId: schedule.workflowId,
+      workflowName,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      success: false,
+      completedSteps: 0,
+      totalSteps: steps.length,
+      error: String(err)
+    }
+    await saveScheduleLog(failLog).catch(console.error)
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send('schedule:run-event', failLog)
+    }
   } finally {
     runningSet.delete(scheduleId)
   }
