@@ -34,3 +34,7 @@ docs/.pdca-status.json
 
 # ETC
 references/
+
+# OMC / TS build info
+.omc/
+*.tsbuildinfo
