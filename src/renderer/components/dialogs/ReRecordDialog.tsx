@@ -1,70 +1,86 @@
-import { useState } from 'react'
+import { useMemo } from 'react'
 import { useUiStore } from '../../stores/uiStore'
-import { ipc } from '../../services/ipc.service'
+import { useWorkflowStore } from '../../stores/workflowStore'
 import { Dialog } from './_Dialog'
-import { Input } from '../ui/Input'
+import { useReRecordSession } from './rerecord/useReRecordSession'
+import { Phase0SelectPanel } from './rerecord/Phase0SelectPanel'
+import { Phase0RunningPanel } from './rerecord/Phase0RunningPanel'
+import { Phase1Panel } from './rerecord/Phase1Panel'
+import { RecordingPanel } from './rerecord/RecordingPanel'
+import { Phase2Panel } from './rerecord/Phase2Panel'
+import { ErrorPanel } from './rerecord/ErrorPanel'
+import { CommitPanel } from './rerecord/CommitPanel'
 
 export function ReRecordDialog() {
   const { dialog, closeDialog } = useUiStore()
-  const [url, setUrl] = useState('https://')
-  const [recording, setRecording] = useState(false)
-  const [error, setError] = useState('')
+  const workflows = useWorkflowStore((s) => s.workflows)
+  const replaceWorkflowSteps = useWorkflowStore((s) => s.replaceWorkflowSteps)
+
+  const workflow = useMemo(() => {
+    if (dialog.type !== 're-record') return null
+    return workflows.find((w) => w.id === dialog.targetWorkflowId) ?? null
+  }, [dialog, workflows])
+
+  const originalSteps = workflow?.steps ?? []
+  const session = useReRecordSession(originalSteps)
 
   if (dialog.type !== 're-record') { closeDialog(); return null }
+  if (!workflow) { closeDialog(); return null }
 
-  const handleRecord = async () => {
-    const trimmedUrl = url.trim()
-    if (!trimmedUrl || !trimmedUrl.startsWith('http')) { setError('올바른 URL을 입력하세요.'); return }
-    setError('')
-
-    setRecording(true)
-    try {
-      await ipc.startCodegen(trimmedUrl)
-    } catch (err) {
-      setError(`실행 오류: ${String(err)}`)
-      setRecording(false)
+  const handleCancel = async () => {
+    if (session.view.view !== 'phase0-select') {
+      try { await session.cancel() } catch { /* noop */ }
     }
-    // 완료는 useIpc의 onCodegenComplete에서 처리
-  }
-
-  const handleCancel = () => {
-    if (recording) ipc.stopCodegen()
     closeDialog()
   }
 
+  const handleSave = async () => {
+    if (session.view.view !== 'commit') return
+    const excluded = session.view.excluded
+    const finalSteps = session.view.candidates
+      .filter((s) => !excluded.has(s.id))
+      .map((s, i) => {
+        const { _origin, ...rest } = s
+        return { ...rest, order: i }
+      })
+    replaceWorkflowSteps(workflow.id, finalSteps)
+    try { await session.finalize() } catch { /* noop */ }
+    closeDialog()
+  }
+
+  const v = session.view
+
   return (
-    <Dialog
-      title={`Re-record: ${dialog.workflowName}`}
-      onClose={handleCancel}
-      onConfirm={recording ? undefined : handleRecord}
-      confirmLabel="● Record"
-    >
-      {!recording ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-[11px] text-[#aaa]">
-            기존 스텝을 새로 녹화한 내용으로 교체합니다.
-            <br />
-            녹화를 중단하면 기존 워크플로우가 유지됩니다.
-          </p>
-          <div>
-            <label className="block text-[11px] text-[#aaa] mb-1">Start URL</label>
-            <Input
-              autoFocus
-              value={url}
-              onChange={(e) => { setUrl(e.target.value); setError('') }}
-              onKeyDown={(e) => e.key === 'Enter' && handleRecord()}
-              placeholder="https://example.com"
-            />
-          </div>
-          {error && <p className="text-[11px] text-red-400">{error}</p>}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-3 py-2">
-          <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[#cccccc]">브라우저에서 동작을 기록하세요</p>
-          <p className="text-xs text-[#777]">기록 완료 후 브라우저 창을 닫으면 저장됩니다</p>
-          <p className="text-xs text-[#e8ab6a]">중단 시 기존 워크플로우가 유지됩니다</p>
-        </div>
+    <Dialog title={`Re-record: ${dialog.workflowName}`} onClose={handleCancel}>
+      {v.view === 'phase0-select' && (
+        <Phase0SelectPanel
+          workflowName={dialog.workflowName}
+          originalSteps={originalSteps}
+          url={v.url}
+          stopAtIndex={v.stopAtIndex}
+          onUrlChange={session.updateSelectUrl}
+          onStopAtChange={session.updateSelectStopAt}
+          onStart={() => session.start(v.url, v.stopAtIndex, workflow.id)}
+          onCancel={handleCancel}
+        />
+      )}
+      {v.view === 'phase0-running' && (
+        <Phase0RunningPanel current={v.current} total={v.total} onCancel={handleCancel} />
+      )}
+      {v.view === 'phase1' && (
+        <Phase1Panel state={v.state} onNext={session.next} onRecord={session.startRec} onCancel={handleCancel} />
+      )}
+      {v.view === 'recording' && (
+        <RecordingPanel onStop={session.stopRec} onCancel={handleCancel} />
+      )}
+      {v.view === 'phase2' && (
+        <Phase2Panel state={v.state} onInclude={session.include} onIncludeAll={session.includeAll} onSkip={session.skip} onRecord={session.startRec} onCancel={handleCancel} />
+      )}
+      {v.view === 'error' && (
+        <ErrorPanel state={v.state} onRetry={session.retry} onRecord={session.startRec} onCancel={handleCancel} />
+      )}
+      {v.view === 'commit' && (
+        <CommitPanel candidates={v.candidates} excluded={v.excluded} onToggle={session.toggleExcluded} onSave={handleSave} onCancel={handleCancel} />
       )}
     </Dialog>
   )

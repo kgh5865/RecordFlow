@@ -22,6 +22,7 @@ interface WorkflowState {
   renameWorkflow: (id: string, name: string) => void
   moveWorkflow: (id: string, targetFolderId: string) => void
   updateSteps: (workflowId: string, steps: WorkflowStep[]) => void
+  replaceWorkflowSteps: (workflowId: string, steps: WorkflowStep[]) => void
 
   // Step
   addStep: (workflowId: string, step: Omit<WorkflowStep, 'id' | 'order'>) => void
@@ -152,6 +153,17 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           : w
       )
     }))
+  },
+
+  replaceWorkflowSteps: (workflowId, steps) => {
+    set((s) => ({
+      workflows: s.workflows.map((w) =>
+        w.id === workflowId
+          ? { ...w, steps, updatedAt: new Date().toISOString() }
+          : w
+      )
+    }))
+    get().persistToStorage()
   },
 
   updateStep: (workflowId, stepId, patch) => {
