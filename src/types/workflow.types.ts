@@ -173,3 +173,52 @@ declare global {
     electronAPI: ElectronAPI
   }
 }
+
+// --- Re-record ---
+export type ReRecordPhase =
+  | 'phase0-auto'
+  | 'phase1'
+  | 'recording'
+  | 'phase2'
+  | 'commit'
+  | 'error'
+
+export interface ReRecordStartRequest {
+  workflowId: string
+  url: string
+  /** -1 = 자동 실행 스킵하고 바로 녹화, 0..N = 해당 인덱스까지(포함) 실행 */
+  stopAtIndex: number
+}
+
+export interface ReRecordStepInfo {
+  /** originalSteps 기준 인덱스 (Phase 1/2가 다음 처리할 스텝) */
+  index: number
+  step: WorkflowStep
+}
+
+export interface ReRecordStateResponse {
+  phase: ReRecordPhase
+  cursor: number
+  totalOriginal: number
+  nextStep?: WorkflowStep
+  lastError?: { stepIndex: number; message: string }
+}
+
+export interface ReRecordStopRecordingResponse extends ReRecordStateResponse {
+  newSteps: WorkflowStep[]
+}
+
+export interface ReRecordCommitResponse {
+  /** _origin 표시가 붙은 최종 후보 스텝들 (렌더러가 Commit UI에서 필터링) */
+  finalSteps: Array<WorkflowStep & { _origin: 'original' | 'recorded' }>
+}
+
+export interface ReRecordProgressEvent {
+  current: number
+  total: number
+}
+
+export interface ReRecordSessionEndedEvent {
+  reason: 'browser-closed' | 'error' | 'cancelled'
+  message?: string
+}
