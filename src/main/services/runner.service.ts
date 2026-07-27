@@ -74,7 +74,7 @@ export async function runWorkflow(
   }
 }
 
-async function executeStep(page: Page, step: WorkflowStep, folderVars: FolderVariable[]): Promise<void> {
+export async function executeStep(page: Page, step: WorkflowStep, folderVars: FolderVariable[]): Promise<void> {
   switch (step.action) {
     case 'navigate':
       if (step.url) await page.goto(step.url)
@@ -173,7 +173,7 @@ function formatDate(date: Date, format: string): string {
 // value 패턴 처리:
 //   {{otp:프로필명}}              → OTP 프로필 secret으로 TOTP 코드 생성 (전체 값 매칭)
 //   {{date:오프셋}} 또는 {{date:오프셋:포맷}} → 날짜 치환 (인라인, 텍스트와 혼합 가능)
-async function resolveValue(value: string, folderVars: FolderVariable[] = []): Promise<string> {
+export async function resolveValue(value: string, folderVars: FolderVariable[] = []): Promise<string> {
   // {{var:key}} 패턴 — 폴더 변수 치환 (인라인, 텍스트와 혼합 가능)
   let resolved = value.replace(
     /\{\{var:\s*(.+?)\s*\}\}/g,
