@@ -10,7 +10,8 @@ import type {
   ReRecordStateResponse,
   ReRecordStartRequest,
   ReRecordSessionEndedEvent,
-  ReRecordStopRecordingResponse
+  ReRecordStopRecordingResponse,
+  ReRecordCommitResponse
 } from '../../types/workflow.types'
 import { executeStep } from './runner.service'
 import { loadStorage } from './storage.service'
@@ -355,4 +356,13 @@ export async function retryStep(): Promise<ReRecordStateResponse> {
     session.lastError = { stepIndex: session.lastError.stepIndex, message: String(err) }
   }
   return stateResponse()
+}
+
+export function getCommitCandidates(): ReRecordCommitResponse {
+  if (!session) throw new Error('세션이 존재하지 않습니다')
+  return { finalSteps: session.finalSteps }
+}
+
+export async function finalizeCommit(): Promise<void> {
+  await cleanupSession()
 }
