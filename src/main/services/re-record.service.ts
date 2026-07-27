@@ -105,7 +105,7 @@ export async function startSession(
     browser,
     context,
     activePage: page,
-    originalSteps: workflow.steps,
+    originalSteps: [...workflow.steps],
     finalSteps: [],
     cursor: 0,
     phase: 'phase0-auto'
