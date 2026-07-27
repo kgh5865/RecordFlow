@@ -3,16 +3,18 @@ import { createRequire } from 'module'
 import { randomUUID } from 'crypto'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { unlink } from 'fs/promises'
+import { unlink, stat, readFile } from 'fs/promises'
 import type {
   WorkflowStep,
   ReRecordPhase,
   ReRecordStateResponse,
   ReRecordStartRequest,
-  ReRecordSessionEndedEvent
+  ReRecordSessionEndedEvent,
+  ReRecordStopRecordingResponse
 } from '../../types/workflow.types'
 import { executeStep } from './runner.service'
 import { loadStorage } from './storage.service'
+import { parse as parseCodegen } from './parser.service'
 
 const _require = createRequire(import.meta.url)
 const { chromium } = _require('playwright')
@@ -170,4 +172,88 @@ export async function nextStep(): Promise<ReRecordStateResponse> {
     session.lastError = { stepIndex: session.cursor, message: String(err) }
   }
   return stateResponse()
+}
+
+export async function startRecording(): Promise<ReRecordStateResponse> {
+  if (!session) throw new Error('세션이 존재하지 않습니다')
+  if (session.phase !== 'phase1' && session.phase !== 'phase2' && session.phase !== 'error') {
+    throw new Error(`startRecording은 phase1/phase2/error에서만 호출 가능 (현재: ${session.phase})`)
+  }
+
+  const outputFile = join(tmpdir(), `recordflow-rr-${randomUUID()}.ts`)
+  session.recorderOutputFile = outputFile
+
+  try {
+    await (session.context as any)._enableRecorder({
+      language: 'javascript',
+      mode: 'recording',
+      outputFile
+    })
+  } catch (err) {
+    throw new Error(`Recorder 시작 실패 (Playwright 버전 호환성 문제일 수 있습니다): ${String(err)}`)
+  }
+
+  session.phase = 'recording'
+  return stateResponse()
+}
+
+async function waitForFileFlush(path: string, timeoutMs: number): Promise<void> {
+  const start = Date.now()
+  let lastSize = -1
+  let stableCount = 0
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const st = await stat(path)
+      if (st.size === lastSize && st.size > 0) {
+        stableCount++
+        if (stableCount >= 2) return
+      } else {
+        stableCount = 0
+        lastSize = st.size
+      }
+    } catch {
+      // 파일 아직 없음
+    }
+    await new Promise((r) => setTimeout(r, 100))
+  }
+}
+
+export async function stopRecording(): Promise<ReRecordStopRecordingResponse> {
+  if (!session) throw new Error('세션이 존재하지 않습니다')
+  if (session.phase !== 'recording') {
+    throw new Error(`stopRecording은 recording에서만 호출 가능 (현재: ${session.phase})`)
+  }
+  if (!session.recorderOutputFile) {
+    throw new Error('recorderOutputFile이 설정되지 않음')
+  }
+
+  try {
+    await (session.context as any)._disableRecorder()
+  } catch (err) {
+    console.error('[re-record] _disableRecorder 실패:', err)
+  }
+
+  await waitForFileFlush(session.recorderOutputFile, 2000)
+
+  let newSteps: WorkflowStep[] = []
+  try {
+    const code = await readFile(session.recorderOutputFile, 'utf-8')
+    newSteps = parseCodegen(code)
+  } catch (err) {
+    session.phase = 'error'
+    session.lastError = { stepIndex: session.cursor, message: `녹화 코드 파싱 실패: ${String(err)}` }
+    return { ...stateResponse(), newSteps: [] } as ReRecordStopRecordingResponse
+  }
+
+  unlink(session.recorderOutputFile).catch(() => { /* noop */ })
+  session.recorderOutputFile = undefined
+
+  for (const s of newSteps) {
+    session.finalSteps.push({ ...s, _origin: 'recorded' })
+  }
+
+  session.phase = session.cursor < session.originalSteps.length ? 'phase2' : 'commit'
+  session.lastError = undefined
+
+  return { ...stateResponse(), newSteps } as ReRecordStopRecordingResponse
 }
