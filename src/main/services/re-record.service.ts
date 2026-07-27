@@ -110,6 +110,22 @@ export async function startSession(
     phase: 'phase0-auto'
   }
 
+  const attachPageListeners = (p: Page): void => {
+    p.on('framenavigated', () => { if (session) session.activePage = p })
+    p.on('load', () => { if (session) session.activePage = p })
+    p.on('close', () => {
+      if (session && session.activePage === p) {
+        const pages = session.context.pages()
+        if (pages.length > 0) session.activePage = pages[pages.length - 1]
+      }
+    })
+  }
+  context.on('page', (newPage) => {
+    if (session) session.activePage = newPage
+    attachPageListeners(newPage)
+  })
+  attachPageListeners(page)
+
   browser.on('disconnected', () => {
     if (session) {
       pushSessionEnded(session.win, { reason: 'browser-closed' })
@@ -312,5 +328,31 @@ export async function skipStep(): Promise<ReRecordStateResponse> {
   }
   session.cursor++
   session.phase = session.cursor >= session.originalSteps.length ? 'commit' : 'phase2'
+  return stateResponse()
+}
+
+export async function retryStep(): Promise<ReRecordStateResponse> {
+  if (!session) throw new Error('세션이 존재하지 않습니다')
+  if (session.phase !== 'error' || !session.lastError) {
+    throw new Error(`retryStep은 error 상태에서만 호출 가능`)
+  }
+
+  const step = session.originalSteps[session.lastError.stepIndex]
+  if (!step) {
+    session.phase = 'phase2'
+    session.lastError = undefined
+    return stateResponse()
+  }
+
+  try {
+    await executeStep(session.activePage, step, [])
+    session.finalSteps.push({ ...step, _origin: 'original' })
+    session.cursor = session.lastError.stepIndex + 1
+    session.phase = session.cursor >= session.originalSteps.length ? 'commit'
+      : (session.finalSteps.some((s) => s._origin === 'recorded') ? 'phase2' : 'phase1')
+    session.lastError = undefined
+  } catch (err) {
+    session.lastError = { stepIndex: session.lastError.stepIndex, message: String(err) }
+  }
   return stateResponse()
 }
