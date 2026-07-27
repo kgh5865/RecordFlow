@@ -40,8 +40,8 @@ export function ReRecordDialog() {
     const finalSteps = session.view.candidates
       .filter((s) => !excluded.has(s.id))
       .map((s, i) => {
-        const { _origin, id: _oldId, ...rest } = s
-        return { ...rest, id: crypto.randomUUID(), order: i }
+        const { _origin, ...rest } = s
+        return { ...rest, order: i }
       })
     replaceWorkflowSteps(workflow.id, finalSteps)
     try { await session.finalize() } catch { /* noop */ }

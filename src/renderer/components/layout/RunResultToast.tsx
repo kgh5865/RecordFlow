@@ -57,8 +57,8 @@ function getErrorHint(error: string): ErrorHint | null {
     return {
       title: '워크플로우 데이터 불완전',
       steps: [
-        '이 Step에 Selector 정보가 없습니다.',
-        '해당 Step을 삭제하고 다시 녹화해주세요.',
+        '이 Step은 이전 버전 방식으로 녹화된 데이터입니다.',
+        '해당 워크플로우를 삭제하고 다시 녹화해주세요.',
       ]
     }
   }

@@ -16,21 +16,7 @@ export function useReRecordSession(originalSteps: WorkflowStep[]) {
     })
     window.electronAPI.onReRecordSessionEnded((evt) => {
       if (evt.reason !== 'cancelled') {
-        setView((v) => {
-          let cursor = 0
-          if (v.view === 'phase1' || v.view === 'phase2' || v.view === 'error') {
-            cursor = v.state.cursor
-          }
-          return {
-            view: 'error',
-            state: {
-              phase: 'error',
-              cursor,
-              totalOriginal: originalSteps.length,
-              lastError: { stepIndex: cursor, message: evt.message ?? evt.reason }
-            }
-          }
-        })
+        setView({ view: 'error', state: { phase: 'error', cursor: 0, totalOriginal: originalSteps.length, lastError: { stepIndex: 0, message: evt.message ?? evt.reason } } })
       }
     })
     return () => {

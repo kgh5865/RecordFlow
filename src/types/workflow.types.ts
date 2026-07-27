@@ -205,6 +205,12 @@ export interface ReRecordStartRequest {
   stopAtIndex: number
 }
 
+export interface ReRecordStepInfo {
+  /** originalSteps 기준 인덱스 (Phase 1/2가 다음 처리할 스텝) */
+  index: number
+  step: WorkflowStep
+}
+
 export interface ReRecordStateResponse {
   phase: ReRecordPhase
   cursor: number
