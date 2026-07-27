@@ -24,6 +24,8 @@ type Browser = import('playwright').Browser
 type BrowserContext = import('playwright').BrowserContext
 type Page = import('playwright').Page
 
+const MAX_URL_LENGTH = 4096
+
 interface Session {
   sessionId: string
   workflowId: string
@@ -48,6 +50,7 @@ function pushProgress(win: BrowserWindow, current: number, total: number): void 
 }
 
 function isValidUrl(url: string): boolean {
+  if (url.length > MAX_URL_LENGTH) return false
   try {
     const p = new URL(url)
     return p.protocol === 'http:' || p.protocol === 'https:'
@@ -105,7 +108,7 @@ export async function startSession(
     browser,
     context,
     activePage: page,
-    originalSteps: workflow.steps,
+    originalSteps: [...workflow.steps],
     finalSteps: [],
     cursor: 0,
     phase: 'phase0-auto'
@@ -169,7 +172,7 @@ export function hasSession(): boolean {
 
 export async function nextStep(): Promise<ReRecordStateResponse> {
   if (!session) throw new Error('세션이 존재하지 않습니다')
-  if (session.phase !== 'phase1' && session.phase !== 'error') {
+  if (session.phase !== 'phase1') {
     throw new Error(`nextStep은 phase1에서만 호출 가능 (현재: ${session.phase})`)
   }
   if (session.cursor >= session.originalSteps.length) {
@@ -233,6 +236,7 @@ async function waitForFileFlush(path: string, timeoutMs: number): Promise<void> 
     }
     await new Promise((r) => setTimeout(r, 100))
   }
+  console.warn(`[re-record] waitForFileFlush 타임아웃 (${timeoutMs}ms), 마지막 크기: ${lastSize}`)
 }
 
 export async function stopRecording(): Promise<ReRecordStopRecordingResponse> {

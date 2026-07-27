@@ -1,0 +1,289 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1778050039911,
+  "projectRoot": "c:\\vscode\\RecordFlow",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "@playwright/test",
+        "version": "1.49.0",
+        "category": "testing"
+      },
+      {
+        "name": "playwright",
+        "version": "1.49.0",
+        "category": "testing"
+      },
+      {
+        "name": "react",
+        "version": "18.3.1",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "18.3.1",
+        "category": "frontend"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": "npm run dev",
+    "scripts": {
+      "dev": "electron-vite dev",
+      "build": "electron-vite build",
+      "preview": "electron-vite preview",
+      "dist": "electron-vite build && electron-builder",
+      "dist:build-only": "electron-builder",
+      "poc": "node scripts/poc-codegen.mjs",
+      "postinstall": "playwright install chromium"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "scripts",
+      "src"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 2,
+      "lastAccessed": 1778050039820,
+      "keyFiles": []
+    },
+    "out": {
+      "path": "out",
+      "purpose": "Build output",
+      "fileCount": 0,
+      "lastAccessed": 1778050039834,
+      "keyFiles": []
+    },
+    "release": {
+      "path": "release",
+      "purpose": null,
+      "fileCount": 5,
+      "lastAccessed": 1778050039836,
+      "keyFiles": [
+        "builder-debug.yml",
+        "latest.yml",
+        "RecordFlow-Setup-0.2.5.exe",
+        "RecordFlow-Setup-0.2.5.exe.blockmap",
+        "RELEASE-GUIDE.md"
+      ]
+    },
+    "resources": {
+      "path": "resources",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1778050039836,
+      "keyFiles": [
+        "icon.ico"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 1,
+      "lastAccessed": 1778050039836,
+      "keyFiles": [
+        "poc-codegen.mjs"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1778050039837,
+      "keyFiles": []
+    },
+    "src\\types": {
+      "path": "src\\types",
+      "purpose": "Type definitions",
+      "fileCount": 2,
+      "lastAccessed": 1778050039838,
+      "keyFiles": [
+        "sensitive.ts",
+        "workflow.types.ts"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src\\main\\services\\scheduler.service.ts",
+      "accessCount": 8,
+      "lastAccessed": 1778053946750,
+      "type": "file"
+    },
+    {
+      "path": "src\\main\\services\\runner.service.ts",
+      "accessCount": 6,
+      "lastAccessed": 1778052641810,
+      "type": "file"
+    },
+    {
+      "path": "src\\main\\ipc-handlers.ts",
+      "accessCount": 4,
+      "lastAccessed": 1778056182894,
+      "type": "file"
+    },
+    {
+      "path": "src\\main\\index.ts",
+      "accessCount": 3,
+      "lastAccessed": 1778055716015,
+      "type": "file"
+    },
+    {
+      "path": "src\\preload\\index.ts",
+      "accessCount": 3,
+      "lastAccessed": 1778056463090,
+      "type": "file"
+    },
+    {
+      "path": "src\\renderer\\App.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1778056468991,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 3,
+      "lastAccessed": 1778057389803,
+      "type": "file"
+    },
+    {
+      "path": "src\\renderer\\components\\layout\\RunResultToast.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1778053175714,
+      "type": "file"
+    },
+    {
+      "path": "src\\renderer",
+      "accessCount": 2,
+      "lastAccessed": 1778056290338,
+      "type": "directory"
+    },
+    {
+      "path": "src\\renderer\\stores\\scheduleStore.ts",
+      "accessCount": 2,
+      "lastAccessed": 1778056297155,
+      "type": "file"
+    },
+    {
+      "path": "src\\renderer\\stores\\workflowStore.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778050214385,
+      "type": "file"
+    },
+    {
+      "path": "src\\main\\services\\storage.service.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778050224070,
+      "type": "file"
+    },
+    {
+      "path": "src\\main\\services\\parser.service.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778050224436,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 1,
+      "lastAccessed": 1778050228823,
+      "type": "file"
+    },
+    {
+      "path": "docs\\01-plan\\features\\workflow-scheduler.plan.md",
+      "accessCount": 1,
+      "lastAccessed": 1778050232917,
+      "type": "file"
+    },
+    {
+      "path": "src\\main\\services\\settings.service.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778050233135,
+      "type": "file"
+    },
+    {
+      "path": "src\\main\\utils\\secure-storage.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778050233319,
+      "type": "file"
+    },
+    {
+      "path": "src\\main\\services\\updater.service.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778050237437,
+      "type": "file"
+    },
+    {
+      "path": "src\\renderer\\services\\ipc.service.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778050237607,
+      "type": "file"
+    },
+    {
+      "path": "src",
+      "accessCount": 1,
+      "lastAccessed": 1778052589697,
+      "type": "directory"
+    },
+    {
+      "path": "src\\main\\services\\workflow-file.service.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778052594177,
+      "type": "file"
+    },
+    {
+      "path": "docs\\01-plan\\features\\scheduler-parallel-execution.plan.md",
+      "accessCount": 1,
+      "lastAccessed": 1778053860346,
+      "type": "file"
+    },
+    {
+      "path": "src\\preload",
+      "accessCount": 1,
+      "lastAccessed": 1778056370454,
+      "type": "directory"
+    }
+  ],
+  "userDirectives": []
+}
