@@ -236,6 +236,7 @@ async function waitForFileFlush(path: string, timeoutMs: number): Promise<void> 
     }
     await new Promise((r) => setTimeout(r, 100))
   }
+  console.warn(`[re-record] waitForFileFlush 타임아웃 (${timeoutMs}ms), 마지막 크기: ${lastSize}`)
 }
 
 export async function stopRecording(): Promise<ReRecordStopRecordingResponse> {
