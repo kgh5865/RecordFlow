@@ -147,3 +147,27 @@ export async function cancelSession(): Promise<void> {
 export function hasSession(): boolean {
   return session !== null
 }
+
+export async function nextStep(): Promise<ReRecordStateResponse> {
+  if (!session) throw new Error('세션이 존재하지 않습니다')
+  if (session.phase !== 'phase1' && session.phase !== 'error') {
+    throw new Error(`nextStep은 phase1에서만 호출 가능 (현재: ${session.phase})`)
+  }
+  if (session.cursor >= session.originalSteps.length) {
+    session.phase = 'commit'
+    return stateResponse()
+  }
+
+  const step = session.originalSteps[session.cursor]
+  try {
+    await executeStep(session.activePage, step, [])
+    session.finalSteps.push({ ...step, _origin: 'original' })
+    session.cursor++
+    session.phase = 'phase1'
+    session.lastError = undefined
+  } catch (err) {
+    session.phase = 'error'
+    session.lastError = { stepIndex: session.cursor, message: String(err) }
+  }
+  return stateResponse()
+}
