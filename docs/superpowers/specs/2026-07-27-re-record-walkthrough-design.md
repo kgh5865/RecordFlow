@@ -54,12 +54,14 @@
 
 - 시작 URL 기본값: 첫 스텝이 navigate라면 그 URL, 아니면 `https://`
 - 스텝 리스트: 스크롤 가능, StepRow와 유사한 시각 스타일 재사용
+- 라디오 리스트 최상단에 **"🔴 자동 실행 없이 바로 녹화"** 옵션 (stopAtIndex = -1). 선택 시 Phase 0 자동 실행을 스킵하고 URL 이동만 한 뒤 바로 Recording Phase 진입 (기존 Re-record와 동등)
 - 라디오 기본값: 마지막 스텝
 - [▶ 시작] 클릭 → `re-record:start` IPC
 
 ### Phase 0-실행 — 사전 선택 지점까지 자동 실행
 
 - main이 브라우저 launch 후 originalSteps[0..stopAtIndex]를 순차 실행
+- `stopAtIndex === -1` ("즉시 녹화" 선택) 시: 자동 실행 없이 page.goto(url)만 수행하고 곧바로 Recording Phase 진입 (Phase 1 스킵)
 - 렌더러 UI: 스피너 + "3/5 실행 중..." 진행 표시
 - 완료 시 자동으로 Phase 1 컨트롤 패널로 전환 (cursor = stopAtIndex + 1)
 - 실행 실패 시 ErrorPanel
@@ -99,8 +101,13 @@
 ```
 
 - main이 `context._enableRecorder({ language: 'javascript', mode: 'recording', outputFile })` 호출 (Playwright private API)
-- [■ 녹화 완료] 클릭 시 recorder 파일 파싱 → 새 스텝 배열 → finalSteps에 append → Phase 2 진입
+- [■ 녹화 완료] 클릭 시:
+  1. `context._disableRecorder()` 호출 → dispose 경로에서 `_throttledOutputFile.flush()` 트리거
+  2. outputFile 존재/크기 폴링 (100ms 간격, 최대 2초 타임아웃) — flush 완료 대기
+  3. 파일 읽어서 parser.service.ts로 파싱 → 새 스텝 배열
+  4. finalSteps에 append → Phase 2 진입
 - 새 스텝이 0개여도 Phase 2로 진입 (남은 기존 스텝만 큐레이션 가능)
+- 파싱 실패 시: ErrorPanel로 전환 ("녹화 코드 파싱 실패" 메시지, 재시도 없음 → 여기서부터 녹화 재진입 또는 취소만 제공)
 
 ### Phase 2 — 남은 기존 스텝 리뷰
 
@@ -124,18 +131,30 @@
 - **[● 여기서부터 녹화]** (Phase 2 재진입): 현재 cursor 스텝은 건너뛴 것으로 취급 (실행 X, push X), Recording Phase 진입. 녹화 완료 후 finalSteps에 append, Phase 2 재개 (cursor 그대로)
 - cursor가 마지막 도달 시 자동으로 Commit UI로 전환
 
-### Commit UI
+### Commit UI (미리보기 + 스텝 제외)
 
 ```
 ┌────────────────────────────────────────────┐
-│ 저장하시겠습니까?                          │
-│ 총 9 스텝 (기존 5 + 신규 4)                │
-│                                            │
-│ [ 저장 ]  [ 취소 ]                         │
+│ 저장 미리보기 (총 9 스텝)                  │
+├────────────────────────────────────────────┤
+│ 1. navigate   https://...          [ ✗ ]  │
+│ 2. click      #login-btn           [ ✗ ]  │
+│ 3. fill       #email     "***"     [ ✗ ]  │
+│ 4. fill       #password  "***"     [ ✗ ]  │
+│ 5. click      #submit              [ ✗ ]  │
+│ 6. (신규) click  .new-btn          [ ✗ ]  │
+│ 7. (신규) fill   .search  "..."    [ ✗ ]  │
+│ 8. wait       .result              [ ✗ ]  │
+│ 9. click      .logout              [ ✗ ]  │
+├────────────────────────────────────────────┤
+│           [ 저장 ]  [ 취소 ]              │
 └────────────────────────────────────────────┘
 ```
 
-- [저장]: workflow.steps 교체 + updatedAt 갱신 + persistToStorage + 브라우저 종료
+- 각 스텝 옆 [✗] 버튼으로 최종 배열에서 제외 가능 (제외된 스텝은 회색으로 표시하고 [↩ 되돌리기] 버튼으로 복구 가능)
+- 신규 녹화 스텝은 "(신규)" 라벨로 구분 (finalSteps에 push될 때 `_origin: 'recorded' | 'original'` 임시 마킹 사용, 저장 시 제거)
+- 순서 조정은 이번 범위 아님 (저장 후 StepPanel에서 편집)
+- [저장]: 제외되지 않은 스텝만 workflow.steps로 교체 + updatedAt 갱신 + persistToStorage + 브라우저 종료
 - [취소]: 원본 유지 + 브라우저 종료
 
 ### Error Panel
@@ -170,15 +189,23 @@ interface ReRecordSession {
   workflowId: string
   browser: Browser
   context: BrowserContext
-  page: Page
+  activePage: Page              // context.on('page') 및 page.on('framenavigated')로 최근 활성 페이지 추적
   originalSteps: WorkflowStep[]
-  finalSteps: WorkflowStep[]
+  finalSteps: Array<WorkflowStep & { _origin: 'original' | 'recorded' }>  // Commit UI 라벨링용
   cursor: number
-  phase: 'phase0-auto' | 'phase1' | 'recording' | 'phase2' | 'error'
+  phase: 'phase0-auto' | 'phase1' | 'recording' | 'phase2' | 'commit' | 'error'
   lastError?: { stepIndex: number; message: string }
   recorderOutputFile?: string
 }
 ```
+
+**활성 페이지 추적**:
+- 세션 시작 시 초기 페이지를 `activePage`로 세팅
+- `context.on('page', newPage)`: 새 페이지 열릴 때마다 `activePage = newPage`로 갱신
+- `newPage.on('framenavigated')` + `newPage.on('load')`: 페이지 내 네비게이션에서도 활성 상태 반영
+- `page.on('close')`: activePage가 닫히면 `context.pages()`에서 가장 최근 페이지로 폴백
+- Phase 1/2의 executeStep은 항상 `session.activePage`를 대상으로 실행
+- 완벽 재현이 어려운 케이스(사용자가 여러 탭 전환 후 이전 탭으로 돌아감)는 재녹화 실패로 이어질 수 있음 → ErrorPanel의 "여기서부터 녹화"로 폴백 가능
 
 세션은 앱 프로세스 메모리에만 존재, persist 안 함. 앱 재시작 시 세션은 소실되고 원본은 안전.
 
@@ -186,6 +213,13 @@ interface ReRecordSession {
 - `executeStep(page, step, folderVars)` 함수를 export하여 재사용
 - runner.service.ts의 `runWorkflow`는 그대로 유지 (실행 완료 후 브라우저 자동 종료)
 - re-record.service.ts는 executeStep만 import하여 자신의 브라우저 세션에서 사용
+
+**세션 종료 및 자원 정리 (공통)**:
+- 취소/에러/브라우저 강제 종료/commit 완료 모든 경로에서 다음을 수행:
+  1. `browser.close().catch(() => {})`
+  2. `recorderOutputFile`이 설정돼 있으면 `unlink(recorderOutputFile).catch(() => {})` (codegen.service.ts:58과 동일 패턴)
+  3. 세션 객체 참조 해제 (null)
+- `browser.on('disconnected')` 리스너로 사용자가 브라우저를 X로 닫은 경우 감지 → 위 정리 루틴 실행 + 렌더러에 `re-record:session-ended` 이벤트 push
 
 ### IPC 채널
 
@@ -203,8 +237,8 @@ interface ReRecordSession {
 | `re-record:retry` | R→M | 없음 | `{ cursor, phase, nextStep? }` 또는 error |
 | `re-record:commit` | R→M | 없음 | `{ finalSteps }` |
 | `re-record:cancel` | R→M | 없음 | `{ ok: true }` |
-| `re-record:auto-progress` | M→R | `{ current, total }` | (Phase 0 진행률 push) |
-| `re-record:session-ended` | M→R | `{ reason: 'browser-closed' \| 'error' \| 'cancelled' }` | 사용자가 브라우저 X 로 닫은 경우 등 |
+| `re-record:auto-progress` | M→R (push) | `{ current, total }` | Phase 0 실행 진행률 이벤트 |
+| `re-record:session-ended` | M→R (push) | `{ reason: 'browser-closed' \| 'error' \| 'cancelled' }` | 사용자가 브라우저 X 로 닫은 경우 등 강제 종료 이벤트 |
 
 모든 R→M 채널은 try/catch 필수 ([ipc-handlers.ts](../../../src/main/ipc-handlers.ts) 규약 준수).
 
@@ -281,9 +315,11 @@ Commit 시:
 **R1. Playwright `_enableRecorder` private API 의존**
 - 위험: Playwright 버전 업그레이드 시 시그니처/동작 변경 가능
 - 완화:
-  - package.json에서 playwright 버전을 `1.49.0` 정확히 고정
+  - package.json에서 playwright 버전을 현재 설치본 기준 `1.58.2`로 정확히 고정 (caret 제거)
+  - package-lock.json 커밋
   - 이 서비스에 대한 회귀 테스트 절차를 README나 CONTRIBUTING에 문서화
-  - _enableRecorder 호출부에 try/catch 후 명시적 에러 메시지 ("Playwright 버전 호환성 문제가 있을 수 있습니다") 표시
+  - _enableRecorder 및 _disableRecorder 호출부에 try/catch 후 명시적 에러 메시지 ("Playwright 버전 호환성 문제가 있을 수 있습니다") 표시
+  - 향후 Playwright 업그레이드 PR 시 필수 회귀 테스트 항목으로 지정
 
 **R2. 자동 실행 중 사이트 변경으로 실패**
 - 완화: ErrorPanel의 [여기서부터 녹화]로 자연스러운 폴백 제공
