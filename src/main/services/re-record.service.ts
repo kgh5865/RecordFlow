@@ -39,6 +39,8 @@ interface Session {
   recorderOutputFile?: string
 }
 
+const MAX_URL_LENGTH = 4096
+
 let session: Session | null = null
 
 function pushProgress(win: BrowserWindow, current: number, total: number): void {
@@ -48,6 +50,7 @@ function pushProgress(win: BrowserWindow, current: number, total: number): void 
 }
 
 function isValidUrl(url: string): boolean {
+  if (url.length > MAX_URL_LENGTH) return false
   try {
     const p = new URL(url)
     return p.protocol === 'http:' || p.protocol === 'https:'
