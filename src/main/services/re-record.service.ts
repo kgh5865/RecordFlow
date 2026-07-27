@@ -257,3 +257,60 @@ export async function stopRecording(): Promise<ReRecordStopRecordingResponse> {
 
   return { ...stateResponse(), newSteps } as ReRecordStopRecordingResponse
 }
+
+export async function includeStep(): Promise<ReRecordStateResponse> {
+  if (!session) throw new Error('세션이 존재하지 않습니다')
+  if (session.phase !== 'phase2' && session.phase !== 'error') {
+    throw new Error(`includeStep은 phase2에서만 호출 가능 (현재: ${session.phase})`)
+  }
+  if (session.cursor >= session.originalSteps.length) {
+    session.phase = 'commit'
+    return stateResponse()
+  }
+
+  const step = session.originalSteps[session.cursor]
+  try {
+    await executeStep(session.activePage, step, [])
+    session.finalSteps.push({ ...step, _origin: 'original' })
+    session.cursor++
+    session.phase = session.cursor >= session.originalSteps.length ? 'commit' : 'phase2'
+    session.lastError = undefined
+  } catch (err) {
+    session.phase = 'error'
+    session.lastError = { stepIndex: session.cursor, message: String(err) }
+  }
+  return stateResponse()
+}
+
+export async function includeAllRemaining(): Promise<ReRecordStateResponse> {
+  if (!session) throw new Error('세션이 존재하지 않습니다')
+  if (session.phase !== 'phase2' && session.phase !== 'error') {
+    throw new Error(`includeAll은 phase2에서만 호출 가능 (현재: ${session.phase})`)
+  }
+
+  while (session.cursor < session.originalSteps.length) {
+    const step = session.originalSteps[session.cursor]
+    try {
+      await executeStep(session.activePage, step, [])
+      session.finalSteps.push({ ...step, _origin: 'original' })
+      session.cursor++
+    } catch (err) {
+      session.phase = 'error'
+      session.lastError = { stepIndex: session.cursor, message: String(err) }
+      return stateResponse()
+    }
+  }
+  session.phase = 'commit'
+  session.lastError = undefined
+  return stateResponse()
+}
+
+export async function skipStep(): Promise<ReRecordStateResponse> {
+  if (!session) throw new Error('세션이 존재하지 않습니다')
+  if (session.phase !== 'phase2') {
+    throw new Error(`skipStep은 phase2에서만 호출 가능 (현재: ${session.phase})`)
+  }
+  session.cursor++
+  session.phase = session.cursor >= session.originalSteps.length ? 'commit' : 'phase2'
+  return stateResponse()
+}
