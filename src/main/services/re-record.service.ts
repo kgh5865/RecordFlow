@@ -38,6 +38,12 @@ interface Session {
 
 let session: Session | null = null
 
+function pushProgress(win: BrowserWindow, current: number, total: number): void {
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('re-record:auto-progress', { current, total })
+  }
+}
+
 function isValidUrl(url: string): boolean {
   try {
     const p = new URL(url)
@@ -110,6 +116,26 @@ export async function startSession(
   })
 
   await page.goto(req.url)
+
+  // Phase 0: stopAtIndex까지 자동 실행 (-1이면 스킵)
+  if (req.stopAtIndex >= 0) {
+    for (let i = 0; i <= req.stopAtIndex && i < workflow.steps.length; i++) {
+      const step = workflow.steps[i]
+      pushProgress(win, i + 1, req.stopAtIndex + 1)
+      try {
+        await executeStep(session.activePage, step, [])
+        session.finalSteps.push({ ...step, _origin: 'original' })
+        session.cursor = i + 1
+      } catch (err) {
+        session.phase = 'error'
+        session.lastError = { stepIndex: i, message: String(err) }
+        return stateResponse()
+      }
+    }
+    session.phase = 'phase1'
+  } else {
+    session.phase = 'phase1'
+  }
 
   return stateResponse()
 }
