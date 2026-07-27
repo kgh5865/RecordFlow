@@ -166,6 +166,21 @@ export interface ElectronAPI {
   // Workflow File Sharing
   exportWorkflow: (workflow: Workflow) => Promise<{ cancelled: boolean }>
   importWorkflow: () => Promise<{ cancelled: boolean; file?: WorkflowExportFile; error?: string }>
+
+  // Re-record
+  reRecordStart: (req: ReRecordStartRequest) => Promise<ReRecordStateResponse>
+  reRecordNext: () => Promise<ReRecordStateResponse>
+  reRecordStartRecording: () => Promise<ReRecordStateResponse>
+  reRecordStopRecording: () => Promise<ReRecordStopRecordingResponse>
+  reRecordInclude: () => Promise<ReRecordStateResponse>
+  reRecordIncludeAll: () => Promise<ReRecordStateResponse>
+  reRecordSkip: () => Promise<ReRecordStateResponse>
+  reRecordRetry: () => Promise<ReRecordStateResponse>
+  reRecordGetCommitCandidates: () => Promise<ReRecordCommitResponse>
+  reRecordFinalize: () => Promise<void>
+  reRecordCancel: () => Promise<void>
+  onReRecordAutoProgress: (cb: (evt: ReRecordProgressEvent) => void) => void
+  onReRecordSessionEnded: (cb: (evt: ReRecordSessionEndedEvent) => void) => void
 }
 
 declare global {

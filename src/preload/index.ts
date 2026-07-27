@@ -1,5 +1,22 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { StorageData, WorkflowStep, RunnerResult, Schedule, ScheduleFolder, FolderVariable, ScheduleLog, AppSettings, Workflow, WorkflowExportFile } from '../types/workflow.types'
+import type {
+  StorageData,
+  WorkflowStep,
+  RunnerResult,
+  Schedule,
+  ScheduleFolder,
+  FolderVariable,
+  ScheduleLog,
+  AppSettings,
+  Workflow,
+  WorkflowExportFile,
+  ReRecordStartRequest,
+  ReRecordStateResponse,
+  ReRecordStopRecordingResponse,
+  ReRecordCommitResponse,
+  ReRecordProgressEvent,
+  ReRecordSessionEndedEvent
+} from '../types/workflow.types'
 
 // removeAllListeners에서 허용하는 채널 화이트리스트
 const ALLOWED_LISTENER_CHANNELS = new Set([
@@ -12,7 +29,9 @@ const ALLOWED_LISTENER_CHANNELS = new Set([
   'updater:update-not-available',
   'updater:download-progress',
   'updater:update-downloaded',
-  'updater:error'
+  'updater:error',
+  're-record:auto-progress',
+  're-record:session-ended'
 ])
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -167,5 +186,49 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   onUpdateError: (cb: (err: string) => void): void => {
     ipcRenderer.on('updater:error', (_event, err) => cb(err))
+  },
+
+  // Re-record
+  reRecordStart: (req: ReRecordStartRequest): Promise<ReRecordStateResponse> =>
+    ipcRenderer.invoke('re-record:start', req),
+
+  reRecordNext: (): Promise<ReRecordStateResponse> =>
+    ipcRenderer.invoke('re-record:next'),
+
+  reRecordStartRecording: (): Promise<ReRecordStateResponse> =>
+    ipcRenderer.invoke('re-record:start-recording'),
+
+  reRecordStopRecording: (): Promise<ReRecordStopRecordingResponse> =>
+    ipcRenderer.invoke('re-record:stop-recording'),
+
+  reRecordInclude: (): Promise<ReRecordStateResponse> =>
+    ipcRenderer.invoke('re-record:include'),
+
+  reRecordIncludeAll: (): Promise<ReRecordStateResponse> =>
+    ipcRenderer.invoke('re-record:include-all'),
+
+  reRecordSkip: (): Promise<ReRecordStateResponse> =>
+    ipcRenderer.invoke('re-record:skip'),
+
+  reRecordRetry: (): Promise<ReRecordStateResponse> =>
+    ipcRenderer.invoke('re-record:retry'),
+
+  reRecordGetCommitCandidates: (): Promise<ReRecordCommitResponse> =>
+    ipcRenderer.invoke('re-record:commit-candidates'),
+
+  reRecordFinalize: (): Promise<void> =>
+    ipcRenderer.invoke('re-record:finalize'),
+
+  reRecordCancel: (): Promise<void> =>
+    ipcRenderer.invoke('re-record:cancel'),
+
+  onReRecordAutoProgress: (cb: (evt: ReRecordProgressEvent) => void): void => {
+    ipcRenderer.removeAllListeners('re-record:auto-progress')
+    ipcRenderer.on('re-record:auto-progress', (_e, evt) => cb(evt))
+  },
+
+  onReRecordSessionEnded: (cb: (evt: ReRecordSessionEndedEvent) => void): void => {
+    ipcRenderer.removeAllListeners('re-record:session-ended')
+    ipcRenderer.on('re-record:session-ended', (_e, evt) => cb(evt))
   },
 })

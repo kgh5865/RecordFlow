@@ -16,7 +16,8 @@ import {
 import { saveWorkflowToFile, loadWorkflowFromFile } from './services/workflow-file.service'
 import { hashFolderPassword, verifyFolderPassword } from './utils/secure-storage'
 import { checkForUpdates, downloadUpdate, quitAndInstall, getCurrentVersion } from './services/updater.service'
-import type { StorageData, WorkflowStep, Schedule, ScheduleFolder, FolderVariable, Workflow } from '../types/workflow.types'
+import * as reRecord from './services/re-record.service'
+import type { StorageData, WorkflowStep, Schedule, ScheduleFolder, FolderVariable, Workflow, ReRecordStartRequest } from '../types/workflow.types'
 
 // 입력값 길이/개수 제한 상수
 const MAX_NAME_LENGTH = 255
@@ -465,5 +466,71 @@ export function registerIpcHandlers(
 
   ipcMain.handle('updater:get-version', () => {
     return getCurrentVersion()
+  })
+
+  // --- Re-record IPC ---
+
+  ipcMain.handle('re-record:start', async (_event, req: ReRecordStartRequest) => {
+    try {
+      if (!req || typeof req.workflowId !== 'string' || typeof req.url !== 'string' || typeof req.stopAtIndex !== 'number') {
+        throw new Error('Invalid re-record:start payload')
+      }
+      const win = getMainWindow()
+      if (!win) throw new Error('Main window unavailable')
+      return await reRecord.startSession(win, req)
+    } catch (err) {
+      console.error('[IPC] re-record:start error:', err)
+      throw err
+    }
+  })
+
+  ipcMain.handle('re-record:next', async () => {
+    try { return await reRecord.nextStep() }
+    catch (err) { console.error('[IPC] re-record:next error:', err); throw err }
+  })
+
+  ipcMain.handle('re-record:start-recording', async () => {
+    try { return await reRecord.startRecording() }
+    catch (err) { console.error('[IPC] re-record:start-recording error:', err); throw err }
+  })
+
+  ipcMain.handle('re-record:stop-recording', async () => {
+    try { return await reRecord.stopRecording() }
+    catch (err) { console.error('[IPC] re-record:stop-recording error:', err); throw err }
+  })
+
+  ipcMain.handle('re-record:include', async () => {
+    try { return await reRecord.includeStep() }
+    catch (err) { console.error('[IPC] re-record:include error:', err); throw err }
+  })
+
+  ipcMain.handle('re-record:include-all', async () => {
+    try { return await reRecord.includeAllRemaining() }
+    catch (err) { console.error('[IPC] re-record:include-all error:', err); throw err }
+  })
+
+  ipcMain.handle('re-record:skip', async () => {
+    try { return await reRecord.skipStep() }
+    catch (err) { console.error('[IPC] re-record:skip error:', err); throw err }
+  })
+
+  ipcMain.handle('re-record:retry', async () => {
+    try { return await reRecord.retryStep() }
+    catch (err) { console.error('[IPC] re-record:retry error:', err); throw err }
+  })
+
+  ipcMain.handle('re-record:commit-candidates', () => {
+    try { return reRecord.getCommitCandidates() }
+    catch (err) { console.error('[IPC] re-record:commit-candidates error:', err); throw err }
+  })
+
+  ipcMain.handle('re-record:finalize', async () => {
+    try { await reRecord.finalizeCommit() }
+    catch (err) { console.error('[IPC] re-record:finalize error:', err); throw err }
+  })
+
+  ipcMain.handle('re-record:cancel', async () => {
+    try { await reRecord.cancelSession() }
+    catch (err) { console.error('[IPC] re-record:cancel error:', err); throw err }
   })
 }
