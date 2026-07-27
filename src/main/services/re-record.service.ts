@@ -172,7 +172,7 @@ export function hasSession(): boolean {
 
 export async function nextStep(): Promise<ReRecordStateResponse> {
   if (!session) throw new Error('세션이 존재하지 않습니다')
-  if (session.phase !== 'phase1' && session.phase !== 'error') {
+  if (session.phase !== 'phase1') {
     throw new Error(`nextStep은 phase1에서만 호출 가능 (현재: ${session.phase})`)
   }
   if (session.cursor >= session.originalSteps.length) {
