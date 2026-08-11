@@ -52,6 +52,7 @@ export function ScheduleDetail() {
   const [toggling, setToggling] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
+  const [reverting, setReverting] = useState(false)
 
   const schedule = schedules.find((s) => s.id === selectedScheduleId)
   const workflow = schedule ? workflows.find((w) => w.id === schedule.workflowId) : undefined
@@ -134,6 +135,33 @@ export function ScheduleDetail() {
           >
             Update{updateChangeCount > 0 ? ` (${updateChangeCount})` : ''}
           </button>
+          {schedule.previousSteps && (
+            <button
+              onClick={async () => {
+                setReverting(true)
+                try {
+                  // 스냅샷은 1개만 관리 — 되돌린 뒤에는 비운다.
+                  // (다시 병합하고 싶으면 Update를 누르면 되므로 redo는 따로 두지 않는다)
+                  await updateSchedule(schedule.id, {
+                    steps: schedule.previousSteps,
+                    previousSteps: undefined,
+                    previousStepsAt: undefined
+                  })
+                } finally {
+                  setReverting(false)
+                }
+              }}
+              disabled={reverting}
+              className="text-[10px] px-2 py-0.5 rounded bg-[#3c3c3c] text-[#e8ab6a] hover:bg-[#505050] disabled:opacity-40 transition-colors"
+              title={`Update 직전 상태로 되돌립니다${
+                schedule.previousStepsAt
+                  ? ` (${new Date(schedule.previousStepsAt).toLocaleString('ko-KR')} 시점)`
+                  : ''
+              }`}
+            >
+              {reverting ? '되돌리는 중...' : '↩ 되돌리기'}
+            </button>
+          )}
           <button
             onClick={() => setEditDialogOpen(true)}
             className="text-[10px] px-2 py-0.5 rounded bg-[#3c3c3c] text-[#cccccc] hover:bg-[#505050] transition-colors"
@@ -219,7 +247,12 @@ export function ScheduleDetail() {
           workflowSteps={workflow.steps}
           scheduleSteps={schedule.steps}
           onConfirm={async (newSteps) => {
-            await updateSchedule(schedule.id, { steps: newSteps })
+            // 되돌리기용 스냅샷은 딱 1개만 보관 — 기존 것은 덮어쓴다
+            await updateSchedule(schedule.id, {
+              steps: newSteps,
+              previousSteps: schedule.steps,
+              previousStepsAt: new Date().toISOString()
+            })
             setUpdateDialogOpen(false)
           }}
           onClose={() => setUpdateDialogOpen(false)}

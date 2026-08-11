@@ -66,6 +66,8 @@ export interface Schedule {
   workflowId: string        // 원본 워크플로우 템플릿 참조 (이름 표시용)
   folderId: string
   steps: WorkflowStep[]     // 독립 복사본 — 개인별 편집 가능
+  previousSteps?: WorkflowStep[]  // Update 직전 steps 스냅샷 (1개만 보관, 되돌리기용)
+  previousStepsAt?: string        // 위 스냅샷을 뜬 시각 (ISO 8601)
   type: ScheduleType
   cronExpression?: string   // type='cron': "0 9 * * *"
   scheduledAt?: string      // type='once': ISO 8601
