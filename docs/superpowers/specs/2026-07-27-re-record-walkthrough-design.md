@@ -306,7 +306,9 @@ cursor == length
 
 Commit 시:
 - `order` 인덱스 0부터 재부여
-- `id`는 모든 스텝을 신규 생성 (원본 스텝이 포함되어도 새 id 부여, 단순화 위해)
+- `id`는 신규 녹화 스텝(`_origin === 'recorded'`)에만 새로 부여하고, **원본 스텝은 기존 id를 유지**한다.
+  원본 스텝은 세션 중 최대 1회만 `finalSteps`에 push되므로 중복 위험이 없고,
+  유지된 id가 스케줄 복사본(`Schedule.steps`)과의 diff/머지 매칭 키가 된다.
 - workflow의 name/id/folderId/createdAt 유지
 - `updatedAt` = new Date().toISOString()
 

@@ -40,8 +40,10 @@ export function ReRecordDialog() {
     const finalSteps = session.view.candidates
       .filter((s) => !excluded.has(s.id))
       .map((s, i) => {
-        const { _origin, id: _oldId, ...rest } = s
-        return { ...rest, id: crypto.randomUUID(), order: i }
+        // 원본 스텝은 id 유지 — 스케줄 복사본과 diff/머지할 때 매칭 키가 된다.
+        // (원본 스텝은 세션 중 최대 1회만 finalSteps에 push되므로 중복 위험 없음)
+        const { _origin, ...rest } = s
+        return { ...rest, id: _origin === 'recorded' ? crypto.randomUUID() : rest.id, order: i }
       })
     replaceWorkflowSteps(workflow.id, finalSteps)
     try { await session.finalize() } catch { /* noop */ }
