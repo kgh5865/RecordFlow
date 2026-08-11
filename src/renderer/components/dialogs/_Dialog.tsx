@@ -6,16 +6,18 @@ interface Props {
   onClose: () => void
   onConfirm?: () => void
   confirmLabel?: string
+  /** Tailwind 폭 클래스. 기본 w-[340px] */
+  widthClass?: string
 }
 
-export function Dialog({ title, children, onClose, onConfirm, confirmLabel = 'OK' }: Props) {
+export function Dialog({ title, children, onClose, onConfirm, confirmLabel = 'OK', widthClass = 'w-[340px]' }: Props) {
   return (
     <div
       className="fixed inset-0 z-40 flex items-center justify-center bg-black/50"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className="w-[340px] bg-[#2d2d2d] border border-[#3c3c3c] rounded-lg shadow-2xl overflow-hidden"
+        className={`${widthClass} bg-[#2d2d2d] border border-[#3c3c3c] rounded-lg shadow-2xl overflow-hidden`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}

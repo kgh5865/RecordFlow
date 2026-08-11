@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useScheduleStore } from '../../stores/scheduleStore'
 import { useWorkflowStore } from '../../stores/workflowStore'
 import { useUiStore } from '../../stores/uiStore'
 import { StepRow } from '../steps/StepRow'
 import { ScheduleDialog } from './ScheduleDialog'
+import { ScheduleUpdateDialog } from '../dialogs/ScheduleUpdateDialog'
+import { buildMergeRows, hasChanges } from '../../utils/scheduleMerge'
 import type { ScheduleLog } from '../../../types/workflow.types'
 
 function LogRow({ log }: { log: ScheduleLog }) {
@@ -43,13 +45,21 @@ export function ScheduleDetail() {
   const moveScheduleStepDown = useScheduleStore((s) => s.moveScheduleStepDown)
   const deleteScheduleStep = useScheduleStore((s) => s.deleteScheduleStep)
   const saveScheduleSteps = useScheduleStore((s) => s.saveScheduleSteps)
+  const updateSchedule = useScheduleStore((s) => s.updateSchedule)
   const workflows = useWorkflowStore((s) => s.workflows)
   const [runningNow, setRunningNow] = useState(false)
   const [runError, setRunError] = useState('')
   const [toggling, setToggling] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
 
   const schedule = schedules.find((s) => s.id === selectedScheduleId)
+  const workflow = schedule ? workflows.find((w) => w.id === schedule.workflowId) : undefined
+  const mergeRows = useMemo(() => {
+    if (!schedule || !workflow) return []
+    return buildMergeRows(workflow.steps, schedule.steps)
+  }, [schedule, workflow])
+  const updateChangeCount = hasChanges(mergeRows) ? mergeRows.filter((r) => r.kind !== 'kept').length : 0
 
   if (!schedule) {
     return (
@@ -59,7 +69,6 @@ export function ScheduleDetail() {
     )
   }
 
-  const workflow = workflows.find((w) => w.id === schedule.workflowId)
   const scheduleLogs = logs[schedule.id] ?? []
   const steps = schedule.steps ?? []
 
@@ -117,6 +126,14 @@ export function ScheduleDetail() {
               <span className="text-[10px] text-red-400">{runError}</span>
             )}
           </div>
+          <button
+            onClick={() => setUpdateDialogOpen(true)}
+            disabled={!workflow || updateChangeCount === 0}
+            className="text-[10px] px-2 py-0.5 rounded bg-[#3c3c3c] text-[#cccccc] hover:bg-[#505050] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title={!workflow ? '원본 워크플로우가 삭제되었습니다' : updateChangeCount === 0 ? '변경 사항 없음' : `${updateChangeCount}건의 변경 사항 반영`}
+          >
+            Update{updateChangeCount > 0 ? ` (${updateChangeCount})` : ''}
+          </button>
           <button
             onClick={() => setEditDialogOpen(true)}
             className="text-[10px] px-2 py-0.5 rounded bg-[#3c3c3c] text-[#cccccc] hover:bg-[#505050] transition-colors"
@@ -195,6 +212,18 @@ export function ScheduleDetail() {
 
       {editDialogOpen && (
         <ScheduleDialog schedule={schedule} onClose={() => setEditDialogOpen(false)} />
+      )}
+
+      {updateDialogOpen && workflow && (
+        <ScheduleUpdateDialog
+          workflowSteps={workflow.steps}
+          scheduleSteps={schedule.steps}
+          onConfirm={async (newSteps) => {
+            await updateSchedule(schedule.id, { steps: newSteps })
+            setUpdateDialogOpen(false)
+          }}
+          onClose={() => setUpdateDialogOpen(false)}
+        />
       )}
     </div>
   )
