@@ -5,6 +5,7 @@ import { useUiStore } from '../../stores/uiStore'
 import { StepRow } from '../steps/StepRow'
 import { ScheduleDialog } from './ScheduleDialog'
 import { ScheduleUpdateDialog } from '../dialogs/ScheduleUpdateDialog'
+import { PreviousVersionDialog } from '../dialogs/PreviousVersionDialog'
 import { buildMergeRows, hasChanges } from '../../utils/scheduleMerge'
 import type { ScheduleLog } from '../../../types/workflow.types'
 
@@ -53,6 +54,7 @@ export function ScheduleDetail() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
   const [reverting, setReverting] = useState(false)
+  const [prevVersionOpen, setPrevVersionOpen] = useState(false)
 
   const schedule = schedules.find((s) => s.id === selectedScheduleId)
   const workflow = schedule ? workflows.find((w) => w.id === schedule.workflowId) : undefined
@@ -137,29 +139,16 @@ export function ScheduleDetail() {
           </button>
           {schedule.previousSteps && (
             <button
-              onClick={async () => {
-                setReverting(true)
-                try {
-                  // 스냅샷은 1개만 관리 — 되돌린 뒤에는 비운다.
-                  // (다시 병합하고 싶으면 Update를 누르면 되므로 redo는 따로 두지 않는다)
-                  await updateSchedule(schedule.id, {
-                    steps: schedule.previousSteps,
-                    previousSteps: undefined,
-                    previousStepsAt: undefined
-                  })
-                } finally {
-                  setReverting(false)
-                }
-              }}
+              onClick={() => setPrevVersionOpen(true)}
               disabled={reverting}
               className="text-[10px] px-2 py-0.5 rounded bg-[#3c3c3c] text-[#e8ab6a] hover:bg-[#505050] disabled:opacity-40 transition-colors"
-              title={`Update 직전 상태로 되돌립니다${
+              title={`Update 직전 버전으로 이동합니다${
                 schedule.previousStepsAt
                   ? ` (${new Date(schedule.previousStepsAt).toLocaleString('ko-KR')} 시점)`
                   : ''
               }`}
             >
-              {reverting ? '되돌리는 중...' : '↩ 되돌리기'}
+              {reverting ? 'Restoring...' : '↩ Previous Version'}
             </button>
           )}
           <button
@@ -256,6 +245,31 @@ export function ScheduleDetail() {
             setUpdateDialogOpen(false)
           }}
           onClose={() => setUpdateDialogOpen(false)}
+        />
+      )}
+
+      {prevVersionOpen && schedule.previousSteps && (
+        <PreviousVersionDialog
+          title="스케줄 이전 버전으로 이동"
+          currentSteps={schedule.steps}
+          previousSteps={schedule.previousSteps}
+          previousStepsAt={schedule.previousStepsAt}
+          onConfirm={async () => {
+            setReverting(true)
+            try {
+              // 스냅샷은 1개만 관리 — 이동한 뒤에는 비운다.
+              // (다시 병합하고 싶으면 Update를 누르면 되므로 redo는 따로 두지 않는다)
+              await updateSchedule(schedule.id, {
+                steps: schedule.previousSteps,
+                previousSteps: undefined,
+                previousStepsAt: undefined
+              })
+            } finally {
+              setReverting(false)
+              setPrevVersionOpen(false)
+            }
+          }}
+          onClose={() => setPrevVersionOpen(false)}
         />
       )}
     </div>

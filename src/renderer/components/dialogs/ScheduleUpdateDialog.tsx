@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Dialog } from './_Dialog'
-import { buildMergeRows, applyMerge, type MergeRow } from '../../utils/scheduleMerge'
+import { buildMergeRows, applyMerge, stepSummary, stepValue, type MergeRow } from '../../utils/scheduleMerge'
 import type { WorkflowStep } from '../../../types/workflow.types'
 
 interface Props {
@@ -15,19 +15,6 @@ const KIND_BADGE: Record<MergeRow['kind'], { label: string; className: string }>
   conflict: { label: '변경', className: 'bg-[#3a3a10] text-[#e8d86a] border border-[#e8d86a]/40' },
   kept: { label: '유지', className: 'bg-[#2a2a2a] text-[#888] border border-[#3c3c3c]' },
   scheduleOnly: { label: '워크플로우에 없음', className: 'bg-[#10283a] text-[#6ab4e8] border border-[#6ab4e8]/40' }
-}
-
-function stepSummary(step?: WorkflowStep): string {
-  if (!step) return ''
-  const target = step.selector ?? step.url ?? ''
-  return `${step.action} ${target}`
-}
-
-// 적용 후 이 스텝에 실제로 들어갈 값. 없으면 빈 문자열 (행에서 값 줄을 생략한다)
-function stepValue(step?: WorkflowStep): string {
-  if (!step) return ''
-  if (step.isSensitive) return '••••••'
-  return step.value ?? step.url ?? ''
 }
 
 // conflict는 value뿐 아니라 selector/rawLine 차이일 수도 있으므로 실제로 다른 필드만 보여준다

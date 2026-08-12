@@ -95,3 +95,19 @@ export function applyMerge(rows: MergeRow[]): WorkflowStep[] {
 export function hasChanges(rows: MergeRow[]): boolean {
   return rows.some((r) => r.kind !== 'kept')
 }
+
+// --- 미리보기 표시용 ---
+
+/** 스텝 한 줄 요약: "fill getByLabel('제목')" */
+export function stepSummary(step?: WorkflowStep): string {
+  if (!step) return ''
+  const target = step.selector ?? step.url ?? ''
+  return `${step.action} ${target}`
+}
+
+/** 스텝에 실제로 들어가는 값. 없으면 빈 문자열 (호출부에서 줄을 생략한다) */
+export function stepValue(step?: WorkflowStep): string {
+  if (!step) return ''
+  if (step.isSensitive) return '••••••'
+  return step.value ?? step.url ?? ''
+}

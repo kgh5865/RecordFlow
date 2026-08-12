@@ -5,6 +5,7 @@ import { ipc } from '../../services/ipc.service'
 import { StepList } from '../steps/StepList'
 import { ConfirmDialog } from '../dialogs/ConfirmDialog'
 import { ReRecordDialog } from '../dialogs/ReRecordDialog'
+import { PreviousVersionDialog } from '../dialogs/PreviousVersionDialog'
 
 export function StepPanel() {
   const selectedWorkflowId = useUiStore((s) => s.selectedWorkflowId)
@@ -131,20 +132,22 @@ export function StepPanel() {
               onClick={() => setPendingRevert(true)}
               disabled={isRunning || isDirty}
               className="px-3 py-0.5 text-xs rounded bg-[#3c3c3c] text-[#e8ab6a] hover:bg-[#505050] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              title={`Re-record 직전 스텝으로 되돌립니다${
+              title={`Re-record 직전 버전으로 이동합니다${
                 workflow.previousStepsAt
                   ? ` (${new Date(workflow.previousStepsAt).toLocaleString('ko-KR')} 시점)`
                   : ''
               }`}
             >
-              ↩ 녹화 되돌리기
+              ↩ Previous Version
             </button>
           )}
-          {pendingRevert && (
-            <ConfirmDialog
-              title="Re-record 되돌리기"
-              message={`"${workflow.name}"의 스텝을 Re-record 직전 상태로 되돌립니다.\n다시 녹화한 내용은 복구할 수 없습니다.\n\n이미 만들어 둔 스케줄은 자동으로 바뀌지 않습니다.\n필요하면 스케줄 화면에서 Update를 다시 눌러주세요.`}
-              confirmLabel="되돌리기"
+          {pendingRevert && workflow.previousSteps && (
+            <PreviousVersionDialog
+              title="워크플로우 이전 버전으로 이동"
+              currentSteps={workflow.steps}
+              previousSteps={workflow.previousSteps}
+              previousStepsAt={workflow.previousStepsAt}
+              note={'다시 녹화한 내용은 복구할 수 없습니다.\n이미 만들어 둔 스케줄은 자동으로 바뀌지 않습니다 — 필요하면 스케줄 화면에서 Update를 다시 눌러주세요.'}
               onConfirm={() => { revertWorkflowSteps(workflow.id); setPendingRevert(false) }}
               onClose={() => setPendingRevert(false)}
             />
