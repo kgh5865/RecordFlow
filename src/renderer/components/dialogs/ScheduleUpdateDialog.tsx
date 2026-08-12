@@ -23,6 +23,13 @@ function stepSummary(step?: WorkflowStep): string {
   return `${step.action} ${target}`
 }
 
+// 적용 후 이 스텝에 실제로 들어갈 값. 없으면 빈 문자열 (행에서 값 줄을 생략한다)
+function stepValue(step?: WorkflowStep): string {
+  if (!step) return ''
+  if (step.isSensitive) return '••••••'
+  return step.value ?? step.url ?? ''
+}
+
 // conflict는 value뿐 아니라 selector/rawLine 차이일 수도 있으므로 실제로 다른 필드만 보여준다
 const DIFF_FIELDS = ['action', 'selector', 'value', 'url', 'rawLine'] as const
 
@@ -72,31 +79,35 @@ export function ScheduleUpdateDialog({ workflowSteps, scheduleSteps, onConfirm, 
           {rows.map((row) => {
             const badge = KIND_BADGE[row.kind]
 
-            if (row.kind === 'kept') {
-              return (
-                <div key={row.id} className="px-2 py-1.5 rounded bg-[#252526] flex items-center gap-2">
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded shrink-0 ${badge.className}`}>{badge.label}</span>
-                  <span className="text-[10px] text-[#666] truncate" title={stepSummary(row.scheduleStep)}>
-                    {stepSummary(row.scheduleStep)}
-                  </span>
-                </div>
-              )
-            }
-
-            if (row.kind === 'added' || row.kind === 'scheduleOnly') {
+            if (row.kind === 'kept' || row.kind === 'added' || row.kind === 'scheduleOnly') {
               const step = row.kind === 'added' ? row.workflowStep : row.scheduleStep
+              const toggleable = row.kind !== 'kept'
+              const value = stepValue(step)
               return (
-                <div key={row.id} className="px-2 py-1.5 rounded bg-[#252526] flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={row.include}
-                    onChange={() => toggleInclude(row.id)}
-                    className="shrink-0"
-                  />
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded shrink-0 ${badge.className}`}>{badge.label}</span>
-                  <span className="text-[10px] text-[#ccc] truncate" title={stepSummary(step)}>
-                    {stepSummary(step)}
-                  </span>
+                <div key={row.id} className="px-2 py-1.5 rounded bg-[#252526] flex flex-col gap-0.5">
+                  <div className="flex items-center gap-2">
+                    {toggleable && (
+                      <input
+                        type="checkbox"
+                        checked={row.include}
+                        onChange={() => toggleInclude(row.id)}
+                        className="shrink-0"
+                      />
+                    )}
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded shrink-0 ${badge.className}`}>{badge.label}</span>
+                    <span
+                      className={`text-[10px] truncate ${toggleable ? 'text-[#ccc]' : 'text-[#666]'}`}
+                      title={stepSummary(step)}
+                    >
+                      {stepSummary(step)}
+                    </span>
+                  </div>
+                  {value && (
+                    <div className={`flex items-center gap-1.5 text-[10px] ${toggleable ? 'pl-6' : 'pl-2'}`}>
+                      <span className="text-[#888] shrink-0">값:</span>
+                      <span className="font-mono text-[#ce9178] truncate min-w-0" title={value}>{value}</span>
+                    </div>
+                  )}
                 </div>
               )
             }
@@ -111,6 +122,18 @@ export function ScheduleUpdateDialog({ workflowSteps, scheduleSteps, onConfirm, 
                     {stepSummary(row.workflowStep)}
                   </span>
                 </div>
+                {/* value가 차이나는 필드가 아니면 아래 라디오에 안 나오므로 따로 보여준다 */}
+                {!fields.includes('value') && stepValue(row.scheduleStep) && (
+                  <div className="flex items-center gap-1.5 text-[10px] pl-2">
+                    <span className="text-[#888] shrink-0">값:</span>
+                    <span
+                      className="font-mono text-[#ce9178] truncate min-w-0"
+                      title={stepValue(row.scheduleStep)}
+                    >
+                      {stepValue(row.scheduleStep)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex flex-col gap-0.5 pl-2">
                   <label className="flex items-center gap-1.5 text-[10px] cursor-pointer">
                     <input
