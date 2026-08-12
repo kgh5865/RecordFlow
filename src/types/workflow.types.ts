@@ -12,6 +12,8 @@ export interface Workflow {
   createdAt: string
   updatedAt: string
   steps: WorkflowStep[]
+  previousSteps?: WorkflowStep[]  // Re-record 직전 steps 스냅샷 (1개만 보관, 되돌리기용)
+  previousStepsAt?: string        // 위 스냅샷을 뜬 시각 (ISO 8601)
 }
 
 export type ActionType = 'navigate' | 'click' | 'fill' | 'select' | 'expect' | 'wait' | 'press'

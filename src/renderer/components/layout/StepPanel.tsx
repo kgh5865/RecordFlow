@@ -17,12 +17,14 @@ export function StepPanel() {
   const dirtyWorkflowIds = useWorkflowStore((s) => s.dirtyWorkflowIds)
   const saveWorkflow = useWorkflowStore((s) => s.saveWorkflow)
   const discardWorkflow = useWorkflowStore((s) => s.discardWorkflow)
+  const revertWorkflowSteps = useWorkflowStore((s) => s.revertWorkflowSteps)
   const selectWorkflow = useUiStore((s) => s.selectWorkflow)
 
   const workflow = workflows.find((w) => w.id === selectedWorkflowId)
   const isDirty = workflow ? dirtyWorkflowIds.includes(workflow.id) : false
 
   const [pendingDiscard, setPendingDiscard] = useState(false)
+  const [pendingRevert, setPendingRevert] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(false)
 
   // Ctrl+S 단축키로 저장
@@ -124,6 +126,29 @@ export function StepPanel() {
           >
             ● Re-record
           </button>
+          {workflow.previousSteps && (
+            <button
+              onClick={() => setPendingRevert(true)}
+              disabled={isRunning || isDirty}
+              className="px-3 py-0.5 text-xs rounded bg-[#3c3c3c] text-[#e8ab6a] hover:bg-[#505050] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title={`Re-record 직전 스텝으로 되돌립니다${
+                workflow.previousStepsAt
+                  ? ` (${new Date(workflow.previousStepsAt).toLocaleString('ko-KR')} 시점)`
+                  : ''
+              }`}
+            >
+              ↩ 녹화 되돌리기
+            </button>
+          )}
+          {pendingRevert && (
+            <ConfirmDialog
+              title="Re-record 되돌리기"
+              message={`"${workflow.name}"의 스텝을 Re-record 직전 상태로 되돌립니다.\n다시 녹화한 내용은 복구할 수 없습니다.\n\n이미 만들어 둔 스케줄은 자동으로 바뀌지 않습니다.\n필요하면 스케줄 화면에서 Update를 다시 눌러주세요.`}
+              confirmLabel="되돌리기"
+              onConfirm={() => { revertWorkflowSteps(workflow.id); setPendingRevert(false) }}
+              onClose={() => setPendingRevert(false)}
+            />
+          )}
           <button
             onClick={() => setPendingDelete(true)}
             disabled={isRunning}

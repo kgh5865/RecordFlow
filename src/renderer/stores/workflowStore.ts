@@ -23,6 +23,7 @@ interface WorkflowState {
   moveWorkflow: (id: string, targetFolderId: string) => void
   updateSteps: (workflowId: string, steps: WorkflowStep[]) => void
   replaceWorkflowSteps: (workflowId: string, steps: WorkflowStep[]) => void
+  revertWorkflowSteps: (workflowId: string) => void
 
   // Step
   addStep: (workflowId: string, step: Omit<WorkflowStep, 'id' | 'order'>) => void
@@ -159,9 +160,28 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set((s) => ({
       workflows: s.workflows.map((w) =>
         w.id === workflowId
-          ? { ...w, steps, updatedAt: new Date().toISOString() }
+          ? {
+              ...w,
+              steps,
+              // 되돌리기용 스냅샷은 딱 1개만 보관 — 기존 것은 덮어쓴다
+              previousSteps: w.steps,
+              previousStepsAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
           : w
       )
+    }))
+    get().persistToStorage()
+  },
+
+  revertWorkflowSteps: (workflowId) => {
+    set((s) => ({
+      workflows: s.workflows.map((w) => {
+        if (w.id !== workflowId || !w.previousSteps) return w
+        // 스냅샷은 1개만 관리 — 되돌린 뒤에는 비운다 (redo 없음)
+        const { previousSteps, previousStepsAt: _at, ...rest } = w
+        return { ...rest, steps: previousSteps, updatedAt: new Date().toISOString() }
+      })
     }))
     get().persistToStorage()
   },
