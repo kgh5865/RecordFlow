@@ -75,8 +75,23 @@ function pushSessionEnded(win: BrowserWindow, evt: ReRecordSessionEndedEvent): v
   }
 }
 
+/**
+ * 브라우저 조작이 끝나 사용자가 앱에서 다음 동작을 골라야 하는 시점에 앱 창을 앞으로 올린다.
+ * Windows는 백그라운드 앱의 focus() 요청을 무시하는 경우가 있어 잠깐 always-on-top으로 띄운다.
+ */
+function focusApp(win: BrowserWindow): void {
+  if (!win || win.isDestroyed()) return
+  if (win.isMinimized()) win.restore()
+  win.setAlwaysOnTop(true)
+  win.show()
+  win.setAlwaysOnTop(false)
+  win.focus()
+}
+
 function stateResponse(): ReRecordStateResponse {
   if (!session) throw new Error('세션이 존재하지 않습니다')
+  // recording 중에는 사용자가 브라우저에서 조작해야 하므로 앱을 올리지 않는다
+  if (session.phase !== 'recording') focusApp(session.win)
   return {
     phase: session.phase,
     cursor: session.cursor,
