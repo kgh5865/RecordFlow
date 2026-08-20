@@ -25,14 +25,53 @@ async function loadOtplib() {
   return _generateSync
 }
 
+type RunOptions = { headless?: boolean; folderVariables?: FolderVariable[]; timeoutMs?: number }
+
+// Playwright의 스텝별 타임아웃(기본 30s)은 chromium.launch()나 browser.close() 자체가
+// 멈추는 경우를 못 잡는다. 그 경우 runWorkflow가 영원히 pending 상태로 남고,
+// 스케줄러의 직렬 큐(동시성 1)가 통째로 막혀 이후 모든 스케줄이 조용히 죽는다.
+// RECORDFLOW_RUN_TIMEOUT_MS 로 덮어쓸 수 있다 (watchdog 동작 확인용)
+const RUN_TIMEOUT_MS = Number(process.env.RECORDFLOW_RUN_TIMEOUT_MS) || 10 * 60_000
+
 export async function runWorkflow(
   win: BrowserWindow | null,
   steps: WorkflowStep[],
-  options?: { headless?: boolean; folderVariables?: FolderVariable[] }
+  options?: RunOptions
+): Promise<RunnerResult> {
+  const timeoutMs = options?.timeoutMs ?? RUN_TIMEOUT_MS
+  const ctx: { browser: any; completedSteps: number } = { browser: null, completedSteps: 0 }
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  const watchdog = new Promise<RunnerResult>((resolve) => {
+    timer = setTimeout(() => {
+      // ponytail: launch() 자체가 멈춘 경우 ctx.browser가 없어 고아 chromium이 남을 수 있다.
+      // 드물고 OS가 정리하므로 방치. 문제가 되면 launch를 pid 추적으로 감쌀 것.
+      ctx.browser?.close().catch(() => {})
+      resolve({
+        success: false,
+        error: `실행 시간 초과 (${Math.round(timeoutMs / 1000)}초) — 강제 종료`,
+        completedSteps: ctx.completedSteps
+      })
+    }, timeoutMs)
+  })
+
+  try {
+    return await Promise.race([runWorkflowInner(win, steps, options, ctx), watchdog])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function runWorkflowInner(
+  win: BrowserWindow | null,
+  steps: WorkflowStep[],
+  options: RunOptions | undefined,
+  ctx: { browser: any; completedSteps: number }
 ): Promise<RunnerResult> {
   const headless = options?.headless ?? false
   const folderVars = options?.folderVariables ?? []
   const browser = await chromium.launch({ headless })
+  ctx.browser = browser
   const page = await browser.newPage()
 
   let completedSteps = 0
@@ -46,6 +85,7 @@ export async function runWorkflow(
 
       await executeStep(page, step, folderVars)
       completedSteps++
+      ctx.completedSteps = completedSteps
     }
 
     // 마지막 스텝 완료 후 3초 대기 (결과 확인용)
@@ -70,7 +110,11 @@ export async function runWorkflow(
     }
     return result
   } finally {
-    await browser.close()
+    // close()도 멈출 수 있다. 30초 넘으면 그냥 포기 — 상위 watchdog이 결과를 이미 돌려줬거나 돌려줄 것이다.
+    await Promise.race([
+      browser.close().catch(() => {}),
+      new Promise((r) => setTimeout(r, 30_000))
+    ])
   }
 }
 

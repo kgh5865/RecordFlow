@@ -10,6 +10,7 @@ import type { Schedule, ScheduleLog } from '../../types/workflow.types'
 import { runWorkflow } from './runner.service'
 import { loadStorage, saveStorage } from './storage.service'
 import { saveJSONAsync } from '../utils/json-storage'
+import { logLine } from '../utils/app-log'
 
 const LOG_FILE = join(app.getPath('userData'), 'schedule-logs.json')
 
@@ -21,6 +22,13 @@ const onceTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 // Prevents concurrent execution of the same schedule
 const runningSet = new Set<string>()
+
+// 큐에 들어갔지만 아직 시작 못 한 스케줄. 큐가 막혀 있을 때 매 tick마다
+// 같은 스케줄이 무한히 쌓이고, 막힘이 풀리는 순간 몰아서 터지는 것을 막는다.
+const queuedSet = new Set<string>()
+
+// 타이머 생존 확인용 하트비트 (스케줄이 하루 1회면 tick 로그만으로는 알 수 없다)
+let heartbeat: ReturnType<typeof setInterval> | null = null
 
 // Serial execution queue — prevents simultaneous Chromium launches
 class ExecutionQueue {
@@ -36,6 +44,7 @@ class ExecutionQueue {
     const run = async () => {
       this.running++
       try { await task() }
+      catch (err) { logLine('Scheduler', `queue task error: ${String(err)}`) }
       finally { this.running--; this.drain() }
     }
     if (this.running < this.maxConcurrency) run()
@@ -59,6 +68,16 @@ export function initScheduler(win: BrowserWindow, schedules: Schedule[]): void {
       registerSchedule(schedule)
     }
   }
+  logLine('Scheduler', `init — 등록 cron ${cronTasks.size}, once ${onceTimers.size}`)
+
+  if (!heartbeat) {
+    heartbeat = setInterval(() => {
+      logLine(
+        'Scheduler',
+        `heartbeat — cron ${cronTasks.size}, once ${onceTimers.size}, running [${[...runningSet].join(',')}], queued [${[...queuedSet].join(',')}]`
+      )
+    }, 60 * 60_000)
+  }
 }
 
 export function setMainWindow(win: BrowserWindow | null): void {
@@ -72,7 +91,16 @@ export function registerSchedule(schedule: Schedule): void {
   if (schedule.type === 'cron' && schedule.cronExpression) {
     if (!cron.validate(schedule.cronExpression)) return
     const task = cron.schedule(schedule.cronExpression, () => {
-      executionQueue.enqueue(() => executeSchedule(schedule.id))
+      if (runningSet.has(schedule.id) || queuedSet.has(schedule.id)) {
+        logLine('Scheduler', `tick ${schedule.id} — 이전 실행이 아직 안 끝나 건너뜀`)
+        return
+      }
+      logLine('Scheduler', `tick ${schedule.id} — 큐 등록`)
+      queuedSet.add(schedule.id)
+      executionQueue.enqueue(async () => {
+        queuedSet.delete(schedule.id)
+        await executeSchedule(schedule.id)
+      })
     })
     cronTasks.set(schedule.id, task)
 
@@ -81,7 +109,11 @@ export function registerSchedule(schedule: Schedule): void {
     if (delay <= 0) return
     // setTimeout max ~24.8 days; sufficient for typical scheduling use
     const timer = setTimeout(() => {
-      executionQueue.enqueue(() => executeSchedule(schedule.id))
+      queuedSet.add(schedule.id)
+      executionQueue.enqueue(async () => {
+        queuedSet.delete(schedule.id)
+        await executeSchedule(schedule.id)
+      })
     }, Math.min(delay, 2_147_483_647))
     onceTimers.set(schedule.id, timer)
   }
@@ -98,6 +130,7 @@ export function unregisterSchedule(scheduleId: string): void {
     clearTimeout(timer)
     onceTimers.delete(scheduleId)
   }
+  queuedSet.delete(scheduleId)
 }
 
 export function stopAllSchedules(): void {
@@ -105,6 +138,8 @@ export function stopAllSchedules(): void {
   cronTasks.clear()
   for (const timer of onceTimers.values()) clearTimeout(timer)
   onceTimers.clear()
+  queuedSet.clear()
+  logLine('Scheduler', 'stopAllSchedules')
 }
 
 export function calcNextRunAt(cronExpression: string): string {
@@ -140,10 +175,12 @@ async function executeSchedule(scheduleId: string): Promise<void> {
 
   runningSet.add(scheduleId)
   const startedAt = new Date().toISOString()
+  logLine('Scheduler', `run start ${scheduleId} (${workflowName}, ${steps.length} steps)`)
 
   try {
     const result = await runWorkflow(null, steps, { headless: true, folderVariables })
     const finishedAt = new Date().toISOString()
+    logLine('Scheduler', `run end ${scheduleId} — success=${result.success} steps=${result.completedSteps}/${steps.length}${result.error ? ` error=${result.error}` : ''}`)
 
     const log: ScheduleLog = {
       id: randomUUID(),
@@ -182,7 +219,7 @@ async function executeSchedule(scheduleId: string): Promise<void> {
       unregisterSchedule(scheduleId)
     }
   } catch (err) {
-    console.error('[Scheduler] Execution error for schedule', scheduleId, err)
+    logLine('Scheduler', `run error ${scheduleId}: ${String(err)}`)
     const failLog: ScheduleLog = {
       id: randomUUID(),
       scheduleId,
@@ -274,7 +311,7 @@ export async function runScheduleNow(scheduleId: string): Promise<ScheduleLog | 
 
     return log
   } catch (err) {
-    console.error('[Scheduler] runScheduleNow error for schedule', scheduleId, err)
+    logLine('Scheduler', `runScheduleNow error ${scheduleId}: ${String(err)}`)
     return null
   } finally {
     runningSet.delete(scheduleId)
