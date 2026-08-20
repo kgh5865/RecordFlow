@@ -53,14 +53,26 @@ export function initAutoUpdater(win: BrowserWindow): void {
 
   // 앱 시작 시 업데이트 확인 (5초 후)
   setTimeout(() => {
-    checkForUpdates()
+    void checkForUpdates()
   }, 5000)
 }
 
-export function checkForUpdates(): void {
-  autoUpdater.checkForUpdates().catch((err) => {
+export interface UpdateCheckResult {
+  updateAvailable: boolean
+  version: string        // 업데이트가 있으면 새 버전, 없으면 현재 버전
+  error?: string
+}
+
+export async function checkForUpdates(): Promise<UpdateCheckResult> {
+  const current = app.getVersion()
+  try {
+    const result = await autoUpdater.checkForUpdates()
+    const version = result?.updateInfo?.version ?? current
+    return { updateAvailable: result?.isUpdateAvailable ?? version !== current, version }
+  } catch (err) {
     console.error('[Updater] 업데이트 확인 실패:', err)
-  })
+    return { updateAvailable: false, version: current, error: (err as Error).message }
+  }
 }
 
 export function downloadUpdate(): void {

@@ -171,6 +171,17 @@ export interface ElectronAPI {
   exportWorkflow: (workflow: Workflow) => Promise<{ cancelled: boolean }>
   importWorkflow: () => Promise<{ cancelled: boolean; file?: WorkflowExportFile; error?: string }>
 
+  // Updater
+  checkForUpdates: () => Promise<{ updateAvailable: boolean; version: string; error?: string }>
+  downloadUpdate: () => Promise<void>
+  installUpdate: () => Promise<void>
+  getAppVersion: () => Promise<string>
+  onUpdateAvailable: (cb: (info: { version: string; releaseNotes?: string; releaseDate?: string }) => void) => void
+  onUpdateNotAvailable: (cb: () => void) => void
+  onDownloadProgress: (cb: (p: { percent: number; transferred: number; total: number }) => void) => void
+  onUpdateDownloaded: (cb: () => void) => void
+  onUpdateError: (cb: (err: string) => void) => void
+
   // Re-record
   reRecordStart: (req: ReRecordStartRequest) => Promise<ReRecordStateResponse>
   reRecordNext: () => Promise<ReRecordStateResponse>

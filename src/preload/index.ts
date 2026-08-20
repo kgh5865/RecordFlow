@@ -156,7 +156,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('workflow:import'),
 
   // Updater
-  checkForUpdates: (): Promise<void> =>
+  checkForUpdates: (): Promise<{ updateAvailable: boolean; version: string; error?: string }> =>
     ipcRenderer.invoke('updater:check'),
 
   downloadUpdate: (): Promise<void> =>

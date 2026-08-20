@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useUiStore } from '../../stores/uiStore'
 import { OtpSection } from './OtpSection'
@@ -45,6 +46,59 @@ function BackgroundModeSection({ backgroundMode, onToggle }: { backgroundMode: b
   )
 }
 
+function UpdateSection() {
+  const [version, setVersion] = useState('')
+  const [checking, setChecking] = useState(false)
+  // 확인 결과 메시지. 업데이트가 있으면 기존 UpdateNotification 팝업이 알아서 뜬다.
+  const [message, setMessage] = useState<{ text: string; kind: 'ok' | 'error' } | null>(null)
+
+  useEffect(() => {
+    window.electronAPI.getAppVersion().then(setVersion)
+  }, [])
+
+  const handleCheck = async () => {
+    setChecking(true)
+    setMessage(null)
+    try {
+      const result = await window.electronAPI.checkForUpdates()
+      if (result.error) setMessage({ text: `업데이트 확인 실패: ${result.error}`, kind: 'error' })
+      else if (result.updateAvailable) setMessage({ text: `새 버전 v${result.version} 발견 — 우측 하단 알림에서 진행하세요.`, kind: 'ok' })
+      else setMessage({ text: '최신 버전을 사용 중입니다.', kind: 'ok' })
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  return (
+    <section>
+      <h3 className="text-[11px] font-semibold text-[#888] uppercase tracking-wider mb-3">업데이트</h3>
+
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <div className="text-[13px] text-[#cccccc] mb-1">
+            현재 버전 <span className="text-[#888]">v{version || '...'}</span>
+          </div>
+          <div className="text-[11px] text-[#666] leading-relaxed">
+            자동 확인은 앱 시작 5초 후 한 번만 실행됩니다. 앱을 오래 켜둔 상태라면 여기서 직접 확인하세요.
+          </div>
+          {message && (
+            <div className={`text-[11px] mt-1.5 ${message.kind === 'error' ? 'text-red-400' : 'text-[#4caf50]'}`}>
+              {message.text}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={handleCheck}
+          disabled={checking}
+          className="shrink-0 px-3 py-1.5 text-[11px] rounded-lg bg-[#0078d4] hover:bg-[#1a8ae8] disabled:bg-[#3c3c3c] disabled:text-[#666] text-white transition-colors font-medium"
+        >
+          {checking ? '확인 중...' : '업데이트 확인'}
+        </button>
+      </div>
+    </section>
+  )
+}
+
 export function SettingsPanel() {
   const { settings, saveSettings } = useSettingsStore()
   const setSettingsPanelOpen = useUiStore((s) => s.setSettingsPanelOpen)
@@ -72,6 +126,7 @@ export function SettingsPanel() {
           onToggle={handleToggleBackground}
         />
         <OtpSection />
+        <UpdateSection />
       </div>
     </div>
   )

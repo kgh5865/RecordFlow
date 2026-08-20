@@ -452,9 +452,7 @@ export function registerIpcHandlers(
 
   // --- Updater IPC ---
 
-  ipcMain.handle('updater:check', () => {
-    checkForUpdates()
-  })
+  ipcMain.handle('updater:check', () => checkForUpdates())
 
   ipcMain.handle('updater:download', () => {
     downloadUpdate()
